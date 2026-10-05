@@ -1,0 +1,265 @@
+
+============================================================================
+  Z A V A   |   LIVE LOCAL AI BUILD
+  Idea in. Bulletproof NPU app out.
+  Built by Surface AI Factory
+============================================================================
+  Idea: "A field service assistant that turns an engineer's rough job notes into a clear work order and customer summary"
+
+[1/6] UNDERSTANDING THE IDEA
+----------------------------------------------------------------------------
+  +------------------------------------------------------------------------+
+  | WHAT THE APP NEEDS                                                     |
+  +------------------------------------------------------------------------+
+  | Primary workload : documents                                           |
+  | documents        : notes, summar                                       |
+  +------------------------------------------------------------------------+
+
+[2/6] SELECTING ON-DEVICE MODELS
+----------------------------------------------------------------------------
+  Read 105 model builds from the live Foundry Local catalog; 11 run on the NPU.
+  +------------------------------------------------------------------------+
+  | MODEL SELECTION  (on-device, NPU-first)                                |
+  +------------------------------------------------------------------------+
+  | Model        : phi-4-mini                                              |
+  | Pinned build : phi-4-mini-instruct-openvino-npu:4                      |
+  | Runs on      : NPU via OpenVINO                                        |
+  | Size         : 2.15 GB                                                 |
+  | Cached       : yes, ready offline                                      |
+  | Stage backup : qwen2.5-0.5b (qwen2.5-0.5b-instruct-openvino-npu:5,     |
+  |              : cached)                                                 |
+  | Catalog      : live Foundry Local catalog                              |
+  +------------------------------------------------------------------------+
+  | - Publishes an NPU build on this device (OpenVINO execution provider). |
+  | - Ranked #1 for 'documents' workloads in the stage playbook.           |
+  | - Already cached on this device: nothing downloads on stage.           |
+  | - 2.15 GB on disk, within the 3.0 GB stage budget.                     |
+  | - License: MIT.                                                        |
+  +------------------------------------------------------------------------+
+    considered: qwen2.5-1.5b: viable alternative (cached, 0.86 GB)
+    considered: qwen2.5-0.5b: viable alternative (cached, 0.32 GB)
+    considered: phi-3-mini-4k: viable alternative (not cached, 2.13 GB)
+  Asking qwen2.5-1.5b on the NPU to design the app (the harness runs locally too):
+  {
+    "title": "FieldNote",
+    "tagline": "Transform rough notes into clear work orders",
+    "input_label": "Enter job details",
+    "sample_prompts": [
+      "Engineer notes: 'Need to replace 500 batteries in 10 units by 10am tomorrow.'",
+      "Customer summary: 'Customer is experiencing issues with their new product.'",
+      "Work order: 'Replace 500 batteries in 10 units by 10am tomorrow.'"
+    ]
+  }
+  [OK]   App spec designed by qwen2.5-1.5b-instruct-openvino-npu:5 on the NPU in 13s
+  +------------------------------------------------------------------------+
+  | APP SPEC                                                               |
+  +------------------------------------------------------------------------+
+  | Title   : FieldNote                                                    |
+  | Tagline : Transform rough notes into clear work orders                 |
+  | Spec by : qwen2.5-1.5b-instruct-openvino-npu:5 on the NPU in 13s       |
+  +------------------------------------------------------------------------+
+  | - Engineer notes: 'Need to replace 500 batteries in 10 units by 10am   |
+  |   tomorrow.'                                                           |
+  | - Customer summary: 'Customer is experiencing issues with their new    |
+  |   product.'                                                            |
+  | - Work order: 'Replace 500 batteries in 10 units by 10am tomorrow.'    |
+  +------------------------------------------------------------------------+
+
+[3/6] GENERATING THE APP
+----------------------------------------------------------------------------
+  [OK]   WinUI 3 app with Foundry Local SDK created at C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote
+  Includes: live inference panel, NPU graph, pinned models, watchdog, labelled replay,
+  presenter shortcuts, --warmup mode, runbook, Zava branding and the Surface AI Factory watermark.
+
+[4/6] APPLYING GUARDRAILS AND CHECKING COMPLIANCE
+----------------------------------------------------------------------------
+  [P0] Branding and attribution first (Zava + Surface AI Factory watermark)
+  [WRITE] C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\DISCLAIMER.md
+  [WRITE] C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\LICENSE
+  [REPORT] Saved to C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\.surface-ai-factory\compliance-report.json
+
+[1m======================================================================
+  Surface AI Factory — Compliance Report
+  Repository: fieldnote
+  Generated:  2026-10-05 16:48 UTC
+──────────────────────────────────────────────────────────────────────
+
+[PASS]  1. Branding & User Experience
+    [PASS] [zava-branding] Zava company branding found in 14 file(s).
+    [PASS] [zava-branding-ui] Zava branding present in application UI.
+    [PASS] [zava-logo] Zava logo asset found (zava-logo.png).
+    [PASS] [watermark-app-ui] Watermark present in main application UI.
+    [PASS] [watermark-about] About page carries the watermark.
+    [PASS] [watermark-readme] README carries the watermark.
+    [PASS] [watermark-installer] Installer/package metadata carries branding.
+    [PASS] [ai-transparency] All four AI transparency indicators present (model, local AI status, NPU, token progress).
+
+[PASS]  2. Application Architecture
+    [PASS] [no-python] No Python application files detected.
+    [PASS] [no-electron] No Electron usage detected.
+    [PASS] [winui3] Windows App SDK / WinUI3 reference found in project file.
+    [PASS] [offline-first] No cloud AI endpoints detected — offline-first pattern confirmed.
+
+[PASS]  3. Inference Framework Standards
+    [PASS] [no-direct-rest] No direct REST AI calls detected.
+    [PASS] [foundry-sdk] Foundry Local SDK usage detected.
+    [PASS] [model-abstraction] Model abstraction layer detected.
+    [PASS] [silicon-agnostic] No vendor-specific inference lock detected.
+    [PASS] [gpu-fallback-consent] GPU fallback correctly gated behind explicit user consent.
+
+[PASS]  4. NPU Validation Requirements
+    [PASS] [npu-detection] NPU detection code found.
+    [PASS] [telemetry] Inference telemetry (latency/throughput) code found.
+    [PASS] [metrics-display] Metrics display (tokens/sec, response time, etc.) found in UI.
+
+[PASS]  5. Model Management
+    [PASS] [model-metadata] Model metadata JSON file found.
+    [PASS] [model-versioning] Model version tracking detected.
+    [PASS] [npu-models] NPU-optimized model references (ONNX/quantization) found.
+
+[WARN]  6. Retrieval-Augmented Generation (RAG)
+    [PASS] [no-cloud-vectors] No cloud vector services detected.
+    [WARN] [local-vectors] RAG/embedding code detected but no local vector store found.
+       → Use SQLite-vec or Microsoft.ML for local embedding storage.
+
+[PASS]  7. Security & Privacy
+    [PASS] [zero-egress] No obvious prompt egress to external endpoints detected.
+    [PASS] [disclaimer] DISCLAIMER file present.
+    [PASS] [privacy-statement] Local AI privacy statement found.
+    [PASS] [license] LICENSE file present.
+
+[WARN]  8. Copilot+ PC Integration
+    [WARN] [copilot-apis] No Copilot+ PC APIs detected (Recall, Click To Do, Studio Effects, Live Captions, OCR, Image APIs).
+       → Consider integrating relevant Copilot+ PC APIs to showcase Surface differentiators.
+    [PASS] [surface-differentiators] README mentions Surface/NPU/Copilot+ differentiators.
+
+[PASS]  9. Resilience & Reliability
+    [PASS] [demo-mode] Demo Mode / Mock Inference detected.
+    [PASS] [error-handling] Model-load error handling detected.
+
+[PASS]  10. Deployment Standards
+    [PASS] [msix] MSIX packaging configuration found.
+    [PASS] [readme-setup] README has 'setup' section.
+    [PASS] [readme-architecture] README has 'architecture' section.
+    [PASS] [readme-model-requirements] README has 'model-requirements' section.
+    [PASS] [readme-demo-script] README has 'demo-script' section.
+    [PASS] [readme-troubleshooting] README has 'troubleshooting' section.
+    [PASS] [readme-disclaimer] README has 'disclaimer' section.
+    [PASS] [readme-local-ai-architecture-flow] README includes an architecture diagram or flow showing how local AI is used.
+
+[WARN]  11. Live Event Readiness
+    [PASS] [model-pinned] Primary model pinned to exact build phi-4-mini-instruct-openvino-npu:4.
+    [PASS] [npu-model] Pinned primary model is an NPU build.
+    [PASS] [backup-model] Stage backup model: qwen2.5-0.5b-instruct-openvino-npu:5.
+    [PASS] [warmup-mode] App supports headless --warmup to precompile the NPU model.
+    [PASS] [first-token-watchdog] First-token watchdog prevents on-stage hangs.
+    [PASS] [labelled-replay] Replay safety net exists and is labelled REPLAY in the UI.
+    [PASS] [sample-prompts] 3 rehearsed sample prompts with shortcuts.
+    [PASS] [inference-panel] Live inference panel shows model build, device, NPU graph, tok/s and TTFT.
+    [PASS] [offline-indicator] Network state chip supports the airplane-mode moment.
+    [PASS] [presenter-shortcuts] Presenter shortcuts (run, stop, samples, replay, full screen).
+    [WARN] [preflight] Preflight has not been run on this device yet.
+       → python harness.py --preflight <app folder>
+    [PASS] [runbook] Stage runbook with recovery playbook present.
+
+──────────────────────────────────────────────────────────────────────
+  Score: 94%  |  PASS: 50  WARN: 3  FAIL: 0
+──────────────────────────────────────────────────────────────────────
+
+  Automated Remediations Applied:
+
+  [BRANDING]
+    • Main UI already branded (MainWindow.xaml)
+    • Installer metadata already branded (Package.appxmanifest)
+
+  [DOCUMENTATION]
+    • Added DISCLAIMER.md
+    • Added MIT LICENSE
+
+
+[5/6] PREFLIGHT: BUILD, NPU WARM-UP, REPLAY RECORDING
+----------------------------------------------------------------------------
+  [OK]   NPU detected: Intel(R) AI Boost
+  [WARN] Power: ON BATTERY at 91%: plug in for the show
+  [OK]   Foundry Local installed: 0.8.103+a0dc58f66c
+  [OK]   Foundry Local service: http://127.0.0.1:56819
+  [OK]   NPU execution provider: OpenVINOExecutionProvider
+  [OK]   Primary model cached: phi-4-mini-instruct-openvino-npu:4
+  [OK]   Backup model cached: qwen2.5-0.5b-instruct-openvino-npu:5
+  [OK]   .NET SDK: 9.x present
+  Building FieldNote.csproj in Release...
+  [OK]   App builds (Release): x64 in 23s
+  Warming up inside the app: loading on the NPU, compiling, running every sample prompt...
+  First time on a device this takes 1 to 4 minutes. Later runs take seconds.
+  [OK]   Primary model live on NPU: phi-4-mini-instruct-openvino-npu:4 on NPU, ready in 17s
+  [OK]   Sample prompts run live: 3/3 live, avg 13.5 tok/s, first token 1.7s
+  [OK]   Replay safety net recorded: 3 outputs recorded on this NPU
+  [OK]   NPU activity observed: peak 93% during samples
+  [OK]   Backup model warm on NPU: qwen2.5-0.5b-instruct-openvino-npu:5 ready in 5.5s
+  [OK]   Warm-up duration: 59s
+
+  SHOW READINESS
+  [PASS] NPU detected                      Intel(R) AI Boost
+  [WARN] Power                             ON BATTERY at 91%: plug in for the show
+  [PASS] Foundry Local installed           0.8.103+a0dc58f66c
+  [PASS] Foundry Local service             http://127.0.0.1:56819
+  [PASS] NPU execution provider            OpenVINOExecutionProvider
+  [PASS] Primary model cached              phi-4-mini-instruct-openvino-npu:4
+  [PASS] Backup model cached               qwen2.5-0.5b-instruct-openvino-npu:5
+  [PASS] .NET SDK                          9.x present
+  [PASS] App builds (Release)              x64 in 23s
+  [PASS] Primary model live on NPU         phi-4-mini-instruct-openvino-npu:4 on NPU, ready in 17s
+  [PASS] Sample prompts run live           3/3 live, avg 13.5 tok/s, first token 1.7s
+  [PASS] Replay safety net recorded        3 outputs recorded on this NPU
+  [PASS] NPU activity observed             peak 93% during samples
+  [PASS] Backup model warm on NPU          qwen2.5-0.5b-instruct-openvino-npu:5 ready in 5.5s
+  [PASS] Warm-up duration                  59s
+
+  ****  GO FOR SHOW  ****
+  Report: C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\.surface-ai-factory\preflight-report.json
+  [REPORT] Saved to C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\.surface-ai-factory\compliance-report.json
+
+[1m======================================================================
+  Surface AI Factory — Compliance Report
+  Repository: fieldnote
+  Generated:  2026-10-05 16:49 UTC
+──────────────────────────────────────────────────────────────────────
+
+[PASS]  11. Live Event Readiness
+    [PASS] [model-pinned] Primary model pinned to exact build phi-4-mini-instruct-openvino-npu:4.
+    [PASS] [npu-model] Pinned primary model is an NPU build.
+    [PASS] [backup-model] Stage backup model: qwen2.5-0.5b-instruct-openvino-npu:5.
+    [PASS] [warmup-mode] App supports headless --warmup to precompile the NPU model.
+    [PASS] [first-token-watchdog] First-token watchdog prevents on-stage hangs.
+    [PASS] [labelled-replay] Replay safety net exists and is labelled REPLAY in the UI.
+    [PASS] [sample-prompts] 3 rehearsed sample prompts with shortcuts.
+    [PASS] [inference-panel] Live inference panel shows model build, device, NPU graph, tok/s and TTFT.
+    [PASS] [offline-indicator] Network state chip supports the airplane-mode moment.
+    [PASS] [presenter-shortcuts] Presenter shortcuts (run, stop, samples, replay, full screen).
+    [PASS] [preflight] Last preflight: GO FOR SHOW.
+    [PASS] [runbook] Stage runbook with recovery playbook present.
+
+──────────────────────────────────────────────────────────────────────
+  Score: 100%  |  PASS: 12  WARN: 0  FAIL: 0
+──────────────────────────────────────────────────────────────────────
+
+
+[6/6] PUBLISHING
+----------------------------------------------------------------------------
+  [OK]   Committed locally on branch main.
+  --no-push set: kept local.
+  +------------------------------------------------------------------------+
+  | READY                                                                  |
+  +------------------------------------------------------------------------+
+  | App     : FieldNote                                                    |
+  | Folder  : C:\Users\lauraosborn\OneDrive -                              |
+  |         : Microsoft\Documents\Microsoft Scout\ai-factory-event-        |
+  |         : harness\.event-builds\fieldnote                              |
+  | Launch  : powershell -File "C:\Users\lauraosborn\OneDrive -            |
+  |         : Microsoft\Documents\Microsoft Scout\ai-factory-event-        |
+  |         : harness\.event-builds\fieldnote\tools\Start-Demo.ps1"        |
+  | Runbook : C:\Users\lauraosborn\OneDrive -                              |
+  |         : Microsoft\Documents\Microsoft Scout\ai-factory-event-        |
+  |         : harness\.event-builds\fieldnote\docs\DEMO-RUNBOOK.md         |
+  | Status  : GO FOR SHOW                                                  |
+  +------------------------------------------------------------------------+

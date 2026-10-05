@@ -1,0 +1,30 @@
+# Workspace used by the harness to clone target repos
+.harness-workspace/
+
+# Event apps generated during rehearsals (each is its own git repo)
+.event-builds/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Environment secrets
+.env
+*.env.local
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
