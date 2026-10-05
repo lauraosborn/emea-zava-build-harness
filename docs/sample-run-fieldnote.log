@@ -67,16 +67,16 @@
 
 [3/6] GENERATING THE APP
 ----------------------------------------------------------------------------
-  [OK]   WinUI 3 app with Foundry Local SDK created at C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote
+  [OK]   WinUI 3 app with Foundry Local SDK created at .\.event-builds\fieldnote
   Includes: live inference panel, NPU graph, pinned models, watchdog, labelled replay,
   presenter shortcuts, --warmup mode, runbook, Zava branding and the Surface AI Factory watermark.
 
 [4/6] APPLYING GUARDRAILS AND CHECKING COMPLIANCE
 ----------------------------------------------------------------------------
   [P0] Branding and attribution first (Zava + Surface AI Factory watermark)
-  [WRITE] C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\DISCLAIMER.md
-  [WRITE] C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\LICENSE
-  [REPORT] Saved to C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\.surface-ai-factory\compliance-report.json
+  [WRITE] .\.event-builds\fieldnote\DISCLAIMER.md
+  [WRITE] .\.event-builds\fieldnote\LICENSE
+  [REPORT] Saved to .\.event-builds\fieldnote\.surface-ai-factory\compliance-report.json
 
 [1m======================================================================
   Surface AI Factory — Compliance Report
@@ -216,8 +216,8 @@
   [PASS] Warm-up duration                  59s
 
   ****  GO FOR SHOW  ****
-  Report: C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\.surface-ai-factory\preflight-report.json
-  [REPORT] Saved to C:\Users\lauraosborn\OneDrive - Microsoft\Documents\Microsoft Scout\ai-factory-event-harness\.event-builds\fieldnote\.surface-ai-factory\compliance-report.json
+  Report: .\.event-builds\fieldnote\.surface-ai-factory\preflight-report.json
+  [REPORT] Saved to .\.event-builds\fieldnote\.surface-ai-factory\compliance-report.json
 
 [1m======================================================================
   Surface AI Factory — Compliance Report
@@ -252,14 +252,8 @@
   | READY                                                                  |
   +------------------------------------------------------------------------+
   | App     : FieldNote                                                    |
-  | Folder  : C:\Users\lauraosborn\OneDrive -                              |
-  |         : Microsoft\Documents\Microsoft Scout\ai-factory-event-        |
-  |         : harness\.event-builds\fieldnote                              |
-  | Launch  : powershell -File "C:\Users\lauraosborn\OneDrive -            |
-  |         : Microsoft\Documents\Microsoft Scout\ai-factory-event-        |
-  |         : harness\.event-builds\fieldnote\tools\Start-Demo.ps1"        |
-  | Runbook : C:\Users\lauraosborn\OneDrive -                              |
-  |         : Microsoft\Documents\Microsoft Scout\ai-factory-event-        |
-  |         : harness\.event-builds\fieldnote\docs\DEMO-RUNBOOK.md         |
+  | Folder  : .\.event-builds\fieldnote                                    |
+  | Launch  : powershell -File .\.event-builds\fieldnote\tools\Start-Demo.ps1|
+  | Runbook : .\.event-builds\fieldnote\docs\DEMO-RUNBOOK.md               |
   | Status  : GO FOR SHOW                                                  |
   +------------------------------------------------------------------------+

@@ -42,6 +42,37 @@ A sample console transcript is in [docs/sample-run-fieldnote.log](docs/sample-ru
 
 The cold compile is why preflight exists: it happens once, before the session, never on stage.
 
+### Verified end to end
+
+Two different ideas each went from a single `--idea` command to **GO FOR SHOW** on this device:
+
+| Idea | Model chosen | Path exercised |
+|---|---|---|
+| Field service notes into work orders ("FieldNote") | phi-4-mini (cached) | Cached model, AI-designed spec, build, NPU warm-up, replay recording |
+| PowerShell coding helper ("Zava Script Coach") | qwen2.5-coder-1.5b (not cached) | Presenter chose to download in preflight; model downloaded, compiled for the NPU and run live |
+
+Failure paths tested deliberately on the built app:
+
+| Scenario | Result |
+|---|---|
+| Primary model broken | Switched to the backup `qwen2.5-0.5b`, **still on the NPU**, live in 5.8s; preflight correctly reports NO-GO for the primary |
+| Primary and backup broken | GPU consent declined (headless), dropped to labelled **Replay** mode, no crash |
+| Safety net (`Ctrl+R`) | Plays outputs recorded on this NPU, labelled `REPLAY · RECORDED ON NPU <date time>` |
+| Presenter keys right after launch | `F5`, `Esc`, `Ctrl+1..3`, `Ctrl+R`, `F11` all work without clicking into the app first |
+| Unattended run, best-fit model not cached | Chose the best cached model, no download |
+| Idea needing speech | Escalated (no NPU speech model on this device); safe default is a text-first NPU demo |
+
+Compliance for generated apps: 51 PASS, 0 FAIL across the Surface AI Factory sections (the one
+warning suggests adding Copilot+ PC APIs), and 12/12 in Section 11 after preflight.
+
+### Sample apps
+
+Two generated apps are produced in `.event-builds/` when you run the commands above
+(git-ignored here, each its own repo with a stage runbook in `docs/DEMO-RUNBOOK.md`):
+
+- **FieldNote**: rough job notes into a work order and customer summary (phi-4-mini).
+- **Zava Script Coach**: explains PowerShell scripts and writes safe admin one-liners (qwen2.5-coder-1.5b).
+
 ---
 
 ## What makes the generated app bulletproof
@@ -123,6 +154,12 @@ python harness.py --repo <url> --report-only               # audit only
 ```
 
 See the guardrail escalation, branding P0 and GPU fallback policy sections below.
+
+Fixes to shared code that also benefit the original modes:
+
+- The harness no longer crashes when its output is piped (for example from Copilot CLI) on a Windows console using cp1252.
+- The RAG check no longer matches words like "storage" or "paragraph".
+- Checks no longer read the harness's own previous reports in `.surface-ai-factory/`, which caused false findings on re-runs.
 
 ---
 
@@ -214,6 +251,24 @@ flowchart TD
 ```powershell
 python -m unittest discover tests
 ```
+
+19 unit tests cover catalog parsing, model selection rules, guardrail defaults, AI-assist parsing,
+app generation (no leftover template tokens, pinned builds) and the Section 11 checks.
+
+---
+
+## Known limitations
+
+- **Speech and vision ideas:** this device's Foundry Local catalog has no NPU builds for speech or
+  vision models, so the harness escalates. The safe route builds a text-first NPU demo (for example
+  working from a pasted transcript). Live microphone or camera input is not built yet.
+- **Airplane mode:** inference is fully local, but a complete run with networking disabled has not
+  been tested yet. Rehearse once offline after preflight (preflight must run online first to
+  register the NPU execution provider and cache the catalog).
+- **First NPU compile:** 1 to 3 minutes per model per app. Always run preflight before the session.
+- **NPU counters:** some devices block the Windows GPU Engine counters; inference still runs on the
+  NPU, and the runbook suggests showing Task Manager's NPU graph instead.
+- **Copilot+ PC APIs** (Click To Do, Studio Effects, OCR and so on) are not integrated yet.
 
 ---
 
