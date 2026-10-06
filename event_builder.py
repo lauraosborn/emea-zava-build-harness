@@ -77,13 +77,14 @@ def create_event_app(spec: AppSpec, plan: ModelPlan, repo_name: str, work_dir: P
     config = app_config(spec, plan)
     _write(project_dir / "Assets" / "app-config.json", json.dumps(config, indent=2))
     _write(project_dir / "Assets" / "replay.json", "[]\n")
+    knowledge_docs = _copy_knowledge(spec, project_dir)
 
     meta = root / ".surface-ai-factory"
     _write(meta / "model-plan.json", json.dumps(plan.to_dict(), indent=2))
     _write(meta / "app-spec.json", json.dumps(spec.to_dict(), indent=2))
 
     _write(root / "models" / "model_catalog.json", json.dumps(model_catalog(plan), indent=2))
-    _write(root / "README.md", readme(spec, plan, repo_name, app))
+    _write(root / "README.md", readme(spec, plan, repo_name, app, knowledge_docs))
     _write(root / "docs" / "DEMO-RUNBOOK.md", runbook(spec, plan, app))
     _write(root / ".gitignore", GITIGNORE)
 
@@ -106,11 +107,40 @@ def _model_ref(choice) -> dict | None:
     }
 
 
+KNOWLEDGE_PACKS = TEMPLATES / "knowledge"
+
+
+def _copy_knowledge(spec: AppSpec, project_dir: Path) -> list[str]:
+    """Ship the industry's sample knowledge base (Markdown, one passage per ## section)."""
+    target = project_dir / "Assets" / "knowledge"
+    pack = KNOWLEDGE_PACKS / spec.knowledge_pack if spec.knowledge_pack else None
+    docs: list[str] = []
+    if pack and pack.is_dir():
+        for src in sorted(pack.rglob("*.md")):
+            dest = target / src.relative_to(pack)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(src, dest)
+            docs.append(str(src.relative_to(pack)).replace("\\", "/"))
+    elif spec.knowledge:
+        _write(target / "public" / "README.txt",
+               "Add Markdown files here (one topic per '## ' heading). They are searched on this device "
+               "and used to ground answers. Files in ../staff are only used by staff modes.\n")
+    return docs
+
+
 def app_config(spec: AppSpec, plan: ModelPlan) -> dict:
     return {
         "appTitle": spec.title,
         "tagline": spec.tagline,
         "idea": plan.analysis.idea,
+        "industry": spec.industry,
+        "organisation": spec.organisation,
+        "theme": spec.theme,
+        "modes": spec.modes,
+        "contextTitle": spec.context_title,
+        "contextFields": spec.context_fields,
+        "localDrivers": spec.local_drivers,
+        "languages": spec.languages,
         "systemPrompt": spec.system_prompt,
         "inputLabel": spec.input_label,
         "samplePrompts": spec.sample_prompts,
@@ -119,7 +149,7 @@ def app_config(spec: AppSpec, plan: ModelPlan) -> dict:
         "selectionReasons": plan.primary.reasons if plan.primary else [],
         "firstTokenTimeoutSeconds": 45,
         "maxTokens": 400,
-        "temperature": 0.3,
+        "temperature": 0.1,
     }
 
 
@@ -156,158 +186,167 @@ def model_catalog(plan: ModelPlan) -> dict:
 
 # ── Documents ───────────────────────────────────────────────────────────────
 
-def readme(spec: AppSpec, plan: ModelPlan, repo_name: str, app: str) -> str:
+def _modes_table(spec: AppSpec) -> str:
+    rows = [f"| **{m['name']}**{f' (F{i + 2})' if len(spec.modes) > 1 else ''} | {m['inputLabel']} | {m['samplePrompts'][0] if m['samplePrompts'] else ''} |"
+            for i, m in enumerate(spec.modes)]
+    return "| Mode | Asks | For example |\n|---|---|---|\n" + "\n".join(rows)
+
+
+def readme(spec: AppSpec, plan: ModelPlan, repo_name: str, app: str, knowledge_docs: list[str] | None = None) -> str:
     p, b = plan.primary, plan.backup
-    primary_row = f"| Primary | `{p.alias}` | `{p.model_id}` | NPU | {p.size_mb / 1024:.2f} GB | {p.license} |" if p else ""
-    backup_row = f"| Stage backup | `{b.alias}` | `{b.model_id}` | NPU | {b.size_mb / 1024:.2f} GB | {b.license} |" if b else ""
-    reasons = "\n".join(f"- {r}" for r in (p.reasons if p else []))
-    samples = "\n".join(f"{i}. {s}" for i, s in enumerate(spec.sample_prompts, 1))
+    knowledge_docs = knowledge_docs or []
+    drivers = "\n".join(f"- **{d['title']}.** {d['detail']}" for d in spec.local_drivers)
+    context = ""
+    if spec.context_fields:
+        fields = ", ".join(f["label"].lower() for f in spec.context_fields)
+        context = (f"\n**{spec.context_title or 'Context'}:** {fields}. These details shape the answer but are held "
+                   "in memory only: never logged, saved or sent. `Ctrl+L` clears them for the next person.\n")
+    knowledge = ""
+    if spec.knowledge:
+        listed = "\n".join(f"- `{d}`" for d in knowledge_docs) or "- (none yet: add Markdown files)"
+        knowledge = f"""
+## What it knows
+
+Answers are grounded in {spec.organisation}'s own documents in `src/{app}/Assets/knowledge`, searched on
+this device (BM25, in memory, no cloud index). Every answer lists the passages it used. Update the
+knowledge by editing the files; no retraining. Files under `staff/` are only used by staff modes.
+
+{listed}
+"""
+    samples = "\n".join(
+        f"| {m['name']} | " + " | ".join(m["samplePrompts"][:3]) + " |" for m in spec.modes)
     gaps = "".join(f"\n> **Capability note:** {g.detail} Best available: {g.best_available or 'none'}.\n"
                    for g in plan.gaps)
     return f"""<img src="Assets/zava-logo.png" alt="Zava" height="32" />
 
-# Zava
-
-> **{WATERMARK_TEXT}** - a Microsoft Surface engineering prototype for Zava.
-> All AI inference runs locally on-device. No data leaves your device.
-
 # {spec.title}
 
-{spec.tagline}
+{spec.tagline}.
 
-Generated live by **Zava Live Build** from the idea:
-
-> {plan.analysis.idea}
+> **{WATERMARK_TEXT}**, a Microsoft Surface engineering prototype for Zava ({spec.industry_name}).
+> All AI runs locally on this device. No data leaves your device.
 {gaps}
-## Surface Differentiators
+## What it does
 
-- **NPU acceleration with all-day battery**: inference runs on the NPU, leaving the CPU and GPU free.
-- **Copilot+ PC features**: on-device AI with no cloud dependency, so the demo works in airplane mode.
-- **Privacy by design**: prompts and outputs never leave the device.
+{_modes_table(spec)}
+{context}
+## Why it runs on this device
 
-## Setup
+{drivers}
+{knowledge}
+## Run it
 
-1. Install [Foundry Local](https://aka.ms/foundry-local) and the .NET 9 SDK.
-2. From the harness: `python harness.py --preflight <path-to-this-folder>`
-   (downloads the pinned model if needed, builds, compiles it for the NPU and records the replay safety net).
-3. Launch: `powershell -File tools\\Start-Demo.ps1`
+The app is built and run on this device only. It is not packaged or published.
 
-Or open `{app}.sln` in Visual Studio 2022 and run the `x64` / `ARM64` configuration.
+1. `python harness.py --preflight {repo_name}` (from the harness folder) builds it, prepares the model and
+   rehearses each mode.
+2. `powershell -File tools\\Start-Demo.ps1`
 
-## Architecture
+Shortcuts: {"`F2`-`F4` mode, " if len(spec.modes) > 1 else ""}`F5` run, `Esc` stop, `Ctrl+1..3` suggestions,
+`Ctrl+L` clear, `Ctrl+I` details, `Ctrl+R` replay safety net, `F11` full screen.
 
-### Local AI Architecture Flow
+## Demo samples
 
-```mermaid
-flowchart TD
-    User[Presenter or attendee] --> UI[WinUI 3 app: {spec.title}]
-    UI --> Runtime[LocalAiRuntime]
-    Runtime --> SDK[Foundry Local SDK, in-process]
-    SDK --> Primary[Pinned primary model on the NPU]
-    Primary -->|load fails| Backup[Pinned backup model on the NPU]
-    Backup -->|load fails| Consent{{Presenter consents to GPU?}}
-    Consent -->|yes| GPU[GPU, still on-device]
-    Consent -->|no| Replay[Labelled replay of outputs recorded on this NPU]
-    Runtime --> Watchdog[First-token watchdog]
-    Watchdog -->|stall| Replay
-    Runtime --> Telemetry[NPU counters, tokens/s, time to first token]
-    Telemetry --> UI
-```
-
-The app loads `{p.model_id if p else 'the selected model'}` in-process through the Foundry Local
-SDK and runs it on the NPU. There are no REST calls to cloud AI endpoints. The right-hand
-**Local Inference** panel shows the exact model build, the device it runs on, live NPU
-utilisation (read from the same Windows counters Task Manager uses), tokens per second and
-time to first token.
-
-## Model Requirements
-
-| Role | Alias | Pinned build | Device | Size | License |
-|---|---|---|---|---|---|
-{primary_row}
-{backup_row}
-
-### Why this model
-
-{reasons}
-
-Models are pinned by exact build (including version) in `src/{app}/Assets/app-config.json`
-so the demo cannot change underneath you.
-
-## GPU Fallback Policy
-
-NPU first, always. If both NPU models fail to load, the presenter is asked before the GPU is
-used (`GpuFallbackConsentService`, wired to a ContentDialog). Declining keeps the demo on the
-labelled replay safety net. The GPU is never used silently.
-
-## Demo Script
-
-See [docs/DEMO-RUNBOOK.md](docs/DEMO-RUNBOOK.md) for the full stage runbook. Sample prompts:
-
+| Mode | Ctrl+1 | Ctrl+2 | Ctrl+3 |
+|---|---|---|---|
 {samples}
 
-Presenter shortcuts: `F5` run, `Esc` stop, `Ctrl+1..3` samples, `Ctrl+R` replay safety net, `F11` full screen.
+See [docs/DEMO-RUNBOOK.md](docs/DEMO-RUNBOOK.md) for the stage script.
+
+## Under the hood
+
+```mermaid
+flowchart LR
+    User[User] --> UI[{spec.title}]
+    UI --> Engine[RequestEngine: private context + local knowledge search]
+    Engine --> Runtime[LocalAiRuntime]
+    Runtime --> SDK[Foundry Local SDK, in-process]
+    SDK --> Model[Pinned local model]
+    Model -->|load fails| Backup[Pinned backup model]
+    Backup -->|load fails| Consent{{GPU only with consent}}
+    Consent -->|no| Replay[Labelled replay recorded on this device]
+```
+
+| Role | Model | Pinned build | Runs on | Size | Licence |
+|---|---|---|---|---|---|
+| Primary | `{p.alias if p else '-'}` | `{p.model_id if p else '-'}` | {p.device if p else '-'} | {(p.size_mb / 1024) if p else 0:.2f} GB | {p.license if p else '-'} |
+| Backup | `{b.alias if b else '-'}` | `{b.model_id if b else '-'}` | {b.device if b else '-'} | {(b.size_mb / 1024) if b else 0:.2f} GB | {b.license if b else '-'} |
+
+Model, device and speed are shown in the ribbon at the bottom of the app; `Ctrl+I` opens the details
+drawer (build, execution provider, live NPU graph, tokens per second, time to first token). Models and
+the compiled model cache are shared by every Zava Live Build app on this device
+(`%LOCALAPPDATA%\\ZavaLiveBuild`), so each model is prepared once per device. The GPU is never used
+without the presenter's consent; failures fall back to replays recorded on this device, always
+labelled REPLAY.
+
+Configuration (theme, modes, prompts, samples, context fields, model pins): `src/{app}/Assets/app-config.json`.
 
 ## Troubleshooting
 
 | Symptom | Fix |
 |---|---|
-| Status says "Optimising for the NPU" | First-run compile. Run the harness preflight before the session. |
-| Badge shows REPLAY | The live model is unavailable. Outputs shown were recorded on this device and are labelled. Check `%LOCALAPPDATA%\\{app}\\logs`. |
-| NPU shows "counters unavailable" | Windows GPU Engine counters are blocked. Inference still runs on the NPU; show Task Manager > Performance > NPU instead. |
-| Model not found | Run `foundry model download {p.model_id if p else '<model>'}` while online. |
+| Ribbon says "Preparing ... first time only" | The model is being compiled for this device. Run the preflight before the session. |
+| Answer badge says REPLAY | The live model is unavailable. Check `%LOCALAPPDATA%\\{app}\\logs`. |
+| Model not found | `foundry model download {p.model_id if p else '<model>'}` while online. |
 
 ## Disclaimer
 
-This application is a **prototype created for educational and demonstration purposes** by the
-Microsoft Surface AI Factory team. Not for production use. AI outputs may be inaccurate.
-Zava is a fictitious company. All AI inference is performed locally on-device.
+Prototype for educational and demonstration purposes by the Microsoft Surface AI Factory team. Not for
+production use. AI output may be inaccurate. Zava and {spec.organisation} are fictitious. All AI inference
+is performed locally on this device.
 """
 
 
 def runbook(spec: AppSpec, plan: ModelPlan, app: str) -> str:
     p, b = plan.primary, plan.backup
-    samples = "\n".join(f"| Ctrl+{i} | {s} |" for i, s in enumerate(spec.sample_prompts, 1))
+    rows = "\n".join(
+        f"| {m['name']}{f' (F{i + 2})' if len(spec.modes) > 1 else ''} | " + " | ".join(m["samplePrompts"][:3]) + " |"
+        for i, m in enumerate(spec.modes))
+    drivers = " ".join(d["title"].rstrip(".") + "." for d in spec.local_drivers)
+    first_driver = spec.local_drivers[0]["detail"] if spec.local_drivers else "Everything runs on this device."
+    context_step = ""
+    if spec.context_fields:
+        example = "; ".join(f"{f['label']}: {f['placeholder'].replace('e.g. ', '')}" for f in spec.context_fields)
+        context_step = (f"\n3. **The private moment.** Fill in {spec.context_title or 'the details'} ({example}) and run "
+                        f"again. Point out that the answer changed, and say: *\"{first_driver}\"* Press `Ctrl+L`: "
+                        "it is gone for the next person.")
+    later = len(spec.modes) > 1
     return f"""# Demo runbook: {spec.title}
 
 Zava | {WATERMARK_TEXT}
 
-## The day before
+## Before the session
 
-- [ ] Device on mains power, Windows Update paused, notifications off (Focus).
-- [ ] `python harness.py --preflight <this folder>` shows **GO FOR SHOW**.
-- [ ] Rehearse once in airplane mode: the network chip turns green ("OFFLINE, AI STILL RUNNING").
-
-## 30 minutes before
-
-- [ ] Run preflight again (it re-warms the NPU cache in seconds).
-- [ ] `tools\\Start-Demo.ps1`, wait for the badge to show **NPU** and status **Live**.
-- [ ] Open Task Manager > Performance > NPU on the second screen (optional proof point).
+- [ ] Device on mains power, notifications off (Focus).
+- [ ] `python harness.py --preflight {slug(spec.title)}` shows **GO FOR SHOW**.
+- [ ] Optional: rehearse once in airplane mode; the header shows "Offline, still working".
+- [ ] `tools\\Start-Demo.ps1`; wait until the ribbon at the bottom shows the model is ready.
 
 ## On stage
 
-1. Say what the app is for: *{spec.tagline}*
-2. Point at the **Local Inference** panel: model `{p.alias if p else '-'}`, build `{p.model_id if p else '-'}`, running on the **NPU**.
-3. Read one line from **Why this model**.
-4. Run the samples:
+**Lead with the job, not the hardware.** The story: *{spec.tagline}.* {drivers}
 
-| Shortcut | Prompt |
-|---|---|
-{samples}
+1. Introduce {spec.organisation} and who uses the app. Point at **Why this runs on this device** on the right.
+2. **{spec.modes[0]['name']}:** `Ctrl+1`, then `F5`. Let the answer stream.{' Point at the sources under the answer: grounded in their own documents, searched on this PC.' if spec.knowledge else ''}{context_step}
+{"4. Switch modes with `F3`/`F4` and run `Ctrl+1` in each: same app, same device, a different job." if later else ""}
+5. Optional, for technical audiences: `Ctrl+I` opens the details drawer (model, device, speed). Otherwise
+   the ribbon at the bottom is enough.
+6. Optional wow moment: airplane mode on, run again.
 
-5. While it streams, call out tokens/sec, time to first token and the NPU utilisation graph.
-6. Optional wow moment: switch on airplane mode and run again.
+| Mode | Ctrl+1 | Ctrl+2 | Ctrl+3 |
+|---|---|---|---|
+{rows}
 
 ## If something goes wrong
 
 | What you see | What to do | What to say |
 |---|---|---|
-| Status stuck on "Optimising" | Press `Ctrl+R` (replay) and carry on | "This is a recording from this same NPU earlier today, labelled as replay." |
-| Badge says backup model | Carry on | "Our fallback model `{b.alias if b else '-'}` is also on the NPU." |
-| GPU consent dialog | Choose **No, stay NPU-only** | "We never move to the GPU without asking." |
-| App frozen | `Esc`, then relaunch with `tools\\Start-Demo.ps1` | "Live demos, everyone." |
+| Ribbon still "Preparing" | `Ctrl+R` (replay) and carry on | "This is an answer recorded on this same PC earlier, labelled as a replay." |
+| Ribbon says backup | Carry on | "A smaller backup model `{b.alias if b else '-'}` is answering, still on this device." |
+| GPU consent dialog | Choose **No, stay NPU-only** | "We never move work without asking." |
+| App frozen | `Esc`, relaunch with `tools\\Start-Demo.ps1` | "Live demos, everyone." |
 
-Replay is always labelled REPLAY on screen. Never present a replay as live.
+Replays are always labelled REPLAY on screen. Never present a replay as live.
 """
 
 

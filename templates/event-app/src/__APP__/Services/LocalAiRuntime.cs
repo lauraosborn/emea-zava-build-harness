@@ -64,6 +64,7 @@ public sealed class LocalAiRuntime
     public NpuUtilisationMonitor NpuMonitor { get; } = new();
     public GpuFallbackConsentService Consent { get; } = new();
     public ReplayLibrary Replay { get; } = ReplayLibrary.Load();
+    public RequestEngine Engine { get; } = new();
 
     public IInferenceService Llm { get; private set; }
     public RuntimeState State { get; private set; } = RuntimeState.Starting;
@@ -179,7 +180,7 @@ public sealed class LocalAiRuntime
                 Llm = chat;
                 ModelId = chat.ModelId;
                 State = RuntimeState.Ready;
-                Status = $"Live: {ModelAlias} on the {Device} (ready in {LoadMs / 1000:F1}s)";
+                Status = $"Ready: {ModelAlias} on this device ({Device}, {LoadMs / 1000:F1}s)";
                 if (chat.ActiveTier == HardwareTier.Npu && !AppSettings.Current.NpuCompiledModels.Contains(chat.ModelId))
                 {
                     AppSettings.Current.NpuCompiledModels.Add(chat.ModelId);
@@ -226,7 +227,7 @@ public sealed class LocalAiRuntime
 
         var firstCompile = tier == HardwareTier.Npu && !AppSettings.Current.NpuCompiledModels.Contains(variant.Id);
         Status = firstCompile
-            ? $"Optimising {target.Alias} for the NPU. First run only, 1 to 3 minutes. Run preflight to avoid this on stage."
+            ? $"Preparing {target.Alias} for this device. First time only, 1 to 3 minutes."
             : $"Loading {target.Alias} on the {Device}{(isBackup ? " (backup model)" : "")}...";
         Raise();
 
@@ -255,8 +256,18 @@ public sealed class LocalAiRuntime
     }
 
     /// <summary>Stream a completion with a first-token watchdog. Stalls fall back to labelled replay.</summary>
+    public IAsyncEnumerable<GenerationUpdate> GenerateAsync(string prompt, CancellationToken ct) =>
+        GenerateAsync(prompt, Config.SystemPrompt, prompt, ct);
+
+    public IAsyncEnumerable<GenerationUpdate> GenerateAsync(AppRequest request, CancellationToken ct) =>
+        GenerateAsync(request.ModelPrompt, request.SystemPrompt, request.ReplayKey, ct);
+
+    /// <param name="modelPrompt">The grounded prompt sent to the on-device model.</param>
+    /// <param name="replayKey">The short key used to find a recorded output in the replay safety net.</param>
     public async IAsyncEnumerable<GenerationUpdate> GenerateAsync(
-        string prompt,
+        string modelPrompt,
+        string systemPrompt,
+        string replayKey,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct)
     {
         IInferenceService service = ForceReplay ? new DemoModeService(Replay) : Llm;
@@ -266,9 +277,10 @@ public sealed class LocalAiRuntime
             HardwareTier.Gpu => InferenceMode.LiveGpu,
             _ => InferenceMode.Replay
         };
+        var prompt = mode == InferenceMode.Replay ? replayKey : modelPrompt;
         var options = new InferenceOptions
         {
-            SystemPrompt = Config.SystemPrompt,
+            SystemPrompt = systemPrompt,
             MaxTokens = Config.MaxTokens,
             Temperature = Config.Temperature
         };
@@ -287,6 +299,9 @@ public sealed class LocalAiRuntime
             watchdog.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, Config.FirstTokenTimeoutSeconds)));
 
         var stream = service.StreamAsync(prompt, options, watchdog.Token).GetAsyncEnumerator(watchdog.Token);
+        var generated = new System.Text.StringBuilder();
+        var busyRetried = false;
+        var stopEarly = false;
         try
         {
             while (true)
@@ -302,6 +317,17 @@ public sealed class LocalAiRuntime
                         ? $"No first token within {Config.FirstTokenTimeoutSeconds}s"
                         : null;
                     break;
+                }
+                catch (Exception ex) when (!ct.IsCancellationRequested && LiveTokenCount == 0 && !busyRetried &&
+                                           ex.Message.Contains("busy", StringComparison.OrdinalIgnoreCase))
+                {
+                    // The previous answer is still finishing on the device: wait a moment and try once more.
+                    AppLog.Write("Model busy finishing the previous answer; retrying once.");
+                    busyRetried = true;
+                    await stream.DisposeAsync();
+                    await Task.Delay(1500, ct);
+                    stream = service.StreamAsync(prompt, options, watchdog.Token).GetAsyncEnumerator(watchdog.Token);
+                    continue;
                 }
                 catch (Exception ex) when (!ct.IsCancellationRequested)
                 {
@@ -324,11 +350,27 @@ public sealed class LocalAiRuntime
                 LastTokensPerSecond = LiveTokenCount > 1 ? (LiveTokenCount - 1) / genSeconds : 0;
                 yield return new GenerationUpdate(stream.Current, LiveTokenCount, LastTokensPerSecond,
                     firstTokenMs, sw.Elapsed.TotalMilliseconds, service.ModelName, mode);
+
+                generated.Append(stream.Current);
+                if (mode != InferenceMode.Replay && IsLooping(generated))
+                {
+                    AppLog.Write("Repetition guard stopped a looping answer.");
+                    yield return new GenerationUpdate("\n\n*Stopped early by the repetition guard.*", LiveTokenCount, LastTokensPerSecond,
+                        firstTokenMs, sw.Elapsed.TotalMilliseconds, service.ModelName, mode);
+                    stopEarly = true;
+                    break;
+                }
             }
         }
         finally
         {
-            await stream.DisposeAsync();
+            if (stopEarly)
+            {
+                // Stop generation on the device too, so the next request does not find it busy.
+                try { watchdog.Cancel(); } catch (ObjectDisposedException) { }
+            }
+            try { await stream.DisposeAsync(); }
+            catch (Exception ex) when (ex is OperationCanceledException || stopEarly) { }
             IsGenerating = false;
             Record(service, mode, firstTokenMs, sw.Elapsed.TotalMilliseconds);
         }
@@ -339,13 +381,34 @@ public sealed class LocalAiRuntime
             var note = $"{fallbackReason}. Showing a recorded on-device output instead.";
             AppLog.Write(note);
             var tokens = 0;
-            await foreach (var token in replay.StreamAsync(prompt, options, ct))
+            await foreach (var token in replay.StreamAsync(replayKey, options, ct))
             {
                 tokens++;
                 yield return new GenerationUpdate(token, tokens, 0, 0, sw.Elapsed.TotalMilliseconds,
                     replay.ModelName, InferenceMode.Replay, note);
             }
         }
+    }
+
+    /// <summary>
+    /// Small models can fall into a loop ("12. Check... 13. Check..."). If the last stretch of
+    /// text (ignoring numbers) has already appeared twice before, the answer is stuck: stop it.
+    /// </summary>
+    private static bool IsLooping(System.Text.StringBuilder generated)
+    {
+        if (generated.Length < 200)
+            return false;
+        var text = new string(generated.ToString().Where(c => !char.IsDigit(c)).ToArray());
+        var tail = text[^40..];
+        var count = 0;
+        var index = 0;
+        while ((index = text.IndexOf(tail, index, StringComparison.Ordinal)) >= 0)
+        {
+            if (++count >= 3)
+                return true;
+            index++;
+        }
+        return false;
     }
 
     private void Record(IInferenceService service, InferenceMode mode, double firstTokenMs, double elapsedMs)

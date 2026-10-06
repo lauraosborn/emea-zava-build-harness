@@ -3,16 +3,24 @@ using System.Text.Json;
 namespace __APP__.Services;
 
 /// <summary>
-/// All app state lives under %LOCALAPPDATA%\__APP__. Nothing is written to a
-/// network location and nothing is uploaded.
+/// App state lives under %LOCALAPPDATA%\__APP__. Nothing is written to a network location
+/// and nothing is uploaded.
+///
+/// Models and the compiled model cache are shared by every Zava Live Build app on this
+/// device (%LOCALAPPDATA%\ZavaLiveBuild): a model is compiled once per device, not once per
+/// app, so a newly generated app is ready in seconds.
 /// </summary>
 public static class AppPaths
 {
     public static string Root { get; } = Ensure(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "__APP__"));
 
-    public static string Models { get; } = Ensure(Path.Combine(Root, "models"));
-    public static string OpenVinoCache { get; } = Ensure(Path.Combine(Root, "ov-cache"));
+    public static string SharedRoot { get; } = Ensure(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "ZavaLiveBuild"));
+
+    public static string Models { get; } = Ensure(Path.Combine(SharedRoot, "models"));
+    public static string OpenVinoCache { get; } = Ensure(Path.Combine(SharedRoot, "ov-cache"));
+    public static string CompiledModelsList { get; } = Path.Combine(SharedRoot, "compiled-models.json");
     public static string Telemetry { get; } = Ensure(Path.Combine(Root, "telemetry"));
     public static string Logs { get; } = Ensure(Path.Combine(Root, "logs"));
     public static string Replay { get; } = Path.Combine(Root, "replay.json");
@@ -55,7 +63,8 @@ public sealed class AppSettings
     /// <summary>Model IDs (including version) whose NPU-compiled blob is already in the OpenVINO cache.</summary>
     public List<string> NpuCompiledModels { get; set; } = new();
 
-    private static readonly string FilePath = Path.Combine(AppPaths.Root, "settings.json");
+    // Shared by every Zava Live Build app: the compiled cache is shared too.
+    private static readonly string FilePath = AppPaths.CompiledModelsList;
     private static AppSettings? _current;
 
     public static AppSettings Current => _current ??= Load();

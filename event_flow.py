@@ -12,8 +12,10 @@ Zava Live Build -- the on-stage flow for `python harness.py --idea "..."`.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import stage
@@ -28,11 +30,53 @@ from remediations import apply_guardrail_decisions, run_all_remediations
 
 TOTAL = 6
 
+LOCAL_APPS_DIR = Path.home() / "ZavaLiveBuilds"
+
+
+def local_work_dir(requested: str | None) -> Path:
+    """Generated apps live on this device, outside OneDrive. Cloud-synced folders slow builds
+    (bin/obj churn) and can evict model or build files, so they are never used."""
+    if not requested:
+        return LOCAL_APPS_DIR
+    path = Path(requested).expanduser().resolve()
+    if is_cloud_synced(path):
+        stage.warn(f"{path} is inside a cloud-synced folder. Building in {LOCAL_APPS_DIR} instead.")
+        return LOCAL_APPS_DIR
+    return path
+
+
+def is_cloud_synced(path: Path) -> bool:
+    roots = [os.environ.get(k) for k in ("OneDrive", "OneDriveCommercial", "OneDriveConsumer")]
+    text = str(path).lower()
+    return "onedrive" in text or any(r and text.startswith(r.lower()) for r in roots)
+
+
+class Budget:
+    """The whole --idea run must finish inside --budget-minutes (default 25)."""
+
+    def __init__(self, minutes: int):
+        self.total = max(5, minutes) * 60
+        self.started = time.monotonic()
+
+    @property
+    def elapsed(self) -> float:
+        return time.monotonic() - self.started
+
+    @property
+    def remaining(self) -> float:
+        return self.total - self.elapsed
+
+    def clock(self) -> str:
+        return f"{self.elapsed / 60:.1f} of {self.total / 60:.0f} min used"
+
 
 def run_event_build(args) -> int:
     idea = args.idea.strip()
-    stage.banner("Idea in. Bulletproof NPU app out.")
+    budget = Budget(getattr(args, "budget_minutes", 25))
+    stage.banner("Idea in. A real local AI app out.")
     stage.info(f'Idea: "{idea}"')
+    stage.info(f"Time budget: {budget.total / 60:.0f} minutes. The app is built on this device in "
+               f"{local_work_dir(args.work_dir)}.")
 
     # ── 1. Understand the idea ─────────────────────────────────────────────
     stage.stage(1, TOTAL, "Understanding the idea")
@@ -93,31 +137,40 @@ def run_event_build(args) -> int:
 
     spec = default_app_spec(idea, analysis, name=args.name)
     assist_model = _assist_model(catalog)
-    if not args.no_ai_assist and catalog.endpoint and assist_model:
-        stage.info(f"Asking {assist_model.alias} on the NPU to design the app (the harness runs locally too):")
+    # The assist only improves the title and samples, and the industry spec already covers
+    # both. It is skipped when the idea already contains example requests.
+    has_examples = len(spec.sample_prompts) >= 3 and any(q in idea for q in spec.sample_prompts[:1])
+    if not args.no_ai_assist and catalog.endpoint and assist_model and not has_examples:
+        stage.info(f"Asking {assist_model.alias} (running locally) to suggest sample requests "
+                   f"(up to {args.assist_timeout}s):")
         print("  ", end="", flush=True)
         tailored, message = tailor_app_spec(
             idea, analysis, catalog.endpoint, assist_model.id, timeout=args.assist_timeout,
             echo=lambda t: print(stage.c(t.replace("\n", "\n  "), stage.DIM), end="", flush=True))
         print()
         if tailored:
-            title = args.name or tailored.title
-            spec = default_app_spec(idea, analysis, name=title)
+            if not args.name and tailored.title:
+                spec.title = tailored.title
             spec.tagline = tailored.tagline or spec.tagline
-            spec.input_label = tailored.input_label or spec.input_label
             spec.sample_prompts = tailored.sample_prompts
+            spec.modes[0]["samplePrompts"] = tailored.sample_prompts
             spec.generated_by = tailored.generated_by
-            stage.ok(f"App spec designed by {message}")
+            stage.ok(f"Samples suggested by {message}")
         else:
-            stage.warn(f"Local AI assist skipped: {message}. Using the built-in spec.")
-    stage.card("APP SPEC", [
+            stage.warn(f"Local AI assist skipped: {message}. Using the {spec.industry_name} profile.")
+    elif has_examples:
+        stage.ok("Using the example requests written into the idea as the demo samples.")
+    stage.card("APP DESIGN", [
         ("Title", spec.title),
-        ("Tagline", spec.tagline),
-        ("Spec by", spec.generated_by),
-    ], footer=spec.sample_prompts)
+        ("What it does", spec.tagline),
+        ("Industry", f"{spec.industry_name} (theme, wording and samples)"),
+        ("Modes", ", ".join(m["name"] for m in spec.modes)),
+        ("Grounded in", "local knowledge base" if spec.knowledge else "the request only"),
+        ("Why local", "; ".join(d["title"] for d in spec.local_drivers)),
+    ], footer=[f'{m["name"]}: {m["samplePrompts"][0]}' for m in spec.modes])
 
     repo_name = slug(args.name or spec.title)
-    work_dir = Path(args.work_dir).resolve()
+    work_dir = local_work_dir(args.work_dir)
 
     if args.plan_only:
         out = work_dir / f"{repo_name}.plan.json"
@@ -129,9 +182,10 @@ def run_event_build(args) -> int:
     # ── 3. Generate the app ────────────────────────────────────────────────
     stage.stage(3, TOTAL, "Generating the app")
     root = create_event_app(spec, plan, repo_name, work_dir, overwrite=args.overwrite)
-    stage.ok(f"WinUI 3 app with Foundry Local SDK created at {root}")
-    stage.info("Includes: live inference panel, NPU graph, pinned models, watchdog, labelled replay,")
-    stage.info("presenter shortcuts, --warmup mode, runbook, Zava branding and the Surface AI Factory watermark.")
+    stage.ok(f"{spec.title} created on this device at {root}")
+    stage.info(f"{spec.industry_name} design, {len(spec.modes)} mode(s)"
+               + (", local knowledge base" if spec.knowledge else "")
+               + ", 'why local' story, details ribbon, presenter shortcuts, labelled replay.")
 
     # ── 4. Guardrails and compliance ───────────────────────────────────────
     stage.stage(4, TOTAL, "Applying guardrails and checking compliance")
@@ -164,9 +218,12 @@ def run_event_build(args) -> int:
         stage.stage(5, TOTAL, "Preflight skipped (--skip-preflight)")
         stage.warn(f"Run before the session: python harness.py --preflight \"{root}\"")
     else:
-        stage.stage(5, TOTAL, "Preflight: build, NPU warm-up, replay recording")
+        stage.stage(5, TOTAL, f"Preflight: build, warm-up, rehearsal ({budget.clock()})")
         from preflight import run_preflight
-        go = run_preflight(root, download=True, warmup_timeout=args.warmup_timeout)
+        # Keep 60s back for the report and commit; the warm-up gets what is left.
+        warm_budget = int(min(args.warmup_timeout, max(120, budget.remaining - 60)))
+        go = run_preflight(root, download=True, warmup_timeout=warm_budget,
+                           full_rehearsal=getattr(args, "full_rehearsal", False), budget=budget)
         sections = report()
         event_section = sections[-1]
         print_report([event_section], repo_name)
@@ -193,6 +250,7 @@ def run_event_build(args) -> int:
         ("Folder", str(root)),
         ("Launch", f'powershell -File "{root / "tools" / "Start-Demo.ps1"}"'),
         ("Runbook", str(root / "docs" / "DEMO-RUNBOOK.md")),
+        ("Build time", f"{budget.elapsed / 60:.1f} min (budget {budget.total / 60:.0f})"),
         ("Status", "GO FOR SHOW" if go else ("run preflight" if go is None else "NO-GO, see above")),
     ], colour=stage.GREEN if go else stage.YELLOW)
     if go and args.launch:
@@ -233,8 +291,12 @@ def _commit_locally(root: Path) -> None:
 def run_preflight_only(args) -> int:
     stage.banner("Preflight: is this device ready for the show?")
     from preflight import run_preflight
-    go = run_preflight(Path(args.preflight), download=not args.no_download,
-                       warmup_timeout=args.warmup_timeout)
+    app_dir = Path(args.preflight)
+    if not app_dir.exists() and (LOCAL_APPS_DIR / args.preflight).exists():
+        app_dir = LOCAL_APPS_DIR / args.preflight   # allow just the app folder name
+    go = run_preflight(app_dir, download=not args.no_download,
+                       warmup_timeout=args.warmup_timeout,
+                       full_rehearsal=getattr(args, "full_rehearsal", False))
     return 0 if go else 3
 
 

@@ -215,14 +215,21 @@ def parse_args():
                    help="--idea: show the idea analysis and model plan, build nothing")
     p.add_argument("--no-ai-assist", action="store_true",
                    help="--idea: do not use the local NPU model to tailor the app spec")
-    p.add_argument("--assist-timeout", type=int, default=120,
-                   help="--idea: seconds to wait for the local AI assist (default 120)")
+    p.add_argument("--assist-timeout", type=int, default=25,
+                   help="--idea: seconds to wait for the optional local AI assist (default 25)")
     p.add_argument("--offline-catalog", action="store_true",
                    help="--idea: use the bundled Foundry catalog snapshot instead of the live service")
     p.add_argument("--skip-preflight", action="store_true",
                    help="--idea: generate and audit only; run --preflight later")
-    p.add_argument("--warmup-timeout", type=int, default=900,
-                   help="Seconds allowed for the in-app NPU warm-up (default 900)")
+    p.add_argument("--warmup-timeout", type=int, default=780,
+                   help="Seconds allowed for the in-app warm-up (default 780; the whole --idea run "
+                        "is held to --budget-minutes)")
+    p.add_argument("--budget-minutes", type=int, default=25,
+                   help="--idea: hard time budget for the whole build (default 25). Slow steps are "
+                        "skipped or shortened to stay inside it.")
+    p.add_argument("--full-rehearsal", action="store_true",
+                   help="--preflight: rehearse every sample in every mode and warm the backup model "
+                        "(slower; the default rehearses one sample per mode)")
     p.add_argument("--no-download", action="store_true",
                    help="--preflight: report uncached models instead of downloading them")
     p.add_argument("--overwrite", action="store_true",
@@ -231,7 +238,9 @@ def parse_args():
                    help="--idea: launch the app when preflight says GO")
     p.add_argument("--target-org", default="AI-Runs-Local", help="GitHub org for output")
     p.add_argument("--github-token", default=os.environ.get("GITHUB_TOKEN", ""), help="GitHub PAT")
-    p.add_argument("--work-dir", default=".harness-workspace", help="Local working directory")
+    p.add_argument("--work-dir", default=None,
+                   help="Local working directory. --idea default: %%USERPROFILE%%\\ZavaLiveBuilds "
+                        "(on this device, outside OneDrive). Other modes: .harness-workspace")
     p.add_argument("--report-only", action="store_true", help="Audit only, no fixes or push")
     p.add_argument("--no-push", action="store_true", help="Apply fixes but don't push")
     p.add_argument("--ai-endpoint", default="http://localhost:5272/v1", help="Local AI endpoint")
@@ -255,6 +264,9 @@ def main():
     if args.idea or args.preflight:
         from event_flow import run_event_build, run_preflight_only
         sys.exit(run_event_build(args) if args.idea else run_preflight_only(args))
+
+    if args.work_dir is None:
+        args.work_dir = ".harness-workspace"
 
     print(colour(f"\nSurface AI Factory -- Best Practices Harness Agent", BOLD + CYAN))
     print(colour(f"{'=' * 55}", CYAN))

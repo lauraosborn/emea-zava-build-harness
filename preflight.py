@@ -20,6 +20,7 @@ from __future__ import annotations
 import json
 import os
 import platform
+import re
 import shutil
 import subprocess
 import time
@@ -80,7 +81,8 @@ def check_foundry() -> tuple[list[tuple[str, str, str]], str | None, list[str]]:
     return results, url, eps
 
 
-def ensure_models_cached(config: dict, base_url: str | None, download: bool) -> list[tuple[str, str, str]]:
+def ensure_models_cached(config: dict, base_url: str | None, download: bool,
+                         download_timeout: int = 3600) -> list[tuple[str, str, str]]:
     results = []
     cached: set[str] = set()
     if base_url:
@@ -104,8 +106,8 @@ def ensure_models_cached(config: dict, base_url: str | None, download: bool) -> 
         if not download:
             results.append((label, FAIL if role == "primary" else WARN, f"{model_id} not cached"))
             continue
-        stage.info(f"Downloading {model_id} (do this on venue-independent Wi-Fi)...")
-        out = foundry_catalog._run_cli("model", "download", model_id, timeout=3600)
+        stage.info(f"Downloading {model_id} (up to {download_timeout // 60} min)...")
+        out = foundry_catalog._run_cli("model", "download", model_id, timeout=download_timeout)
         ok = "error" not in out.lower() or model_id in foundry_catalog._run_cli("cache", "list")
         results.append((label, PASS if ok else FAIL, f"{model_id} {'downloaded' if ok else 'download failed'}"))
     return results
@@ -127,11 +129,21 @@ def platform_name() -> str:
 
 
 def build_app(app_root: Path, project: Path) -> tuple[tuple[str, str, str], Path | None]:
+    """Local, unpackaged build for this device only: no MSIX, no publish, no trimming.
+    Restore is skipped when it already ran (rebuilds take seconds)."""
     plat = platform_name()
     started = time.perf_counter()
-    proc = subprocess.run(
-        ["dotnet", "build", str(project), "-c", "Release", f"-p:Platform={plat}", "--nologo", "-v", "minimal"],
-        cwd=str(app_root), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    restored = (project.parent / "obj" / "project.assets.json").exists()
+    cmd = ["dotnet", "build", str(project), "-c", "Release", f"-p:Platform={plat}", "--nologo",
+           "-v", "minimal", "-m", "-p:GenerateAppxPackageOnBuild=false", "-p:AppxPackageSigningEnabled=false",
+           "-p:DebugType=none", "-p:GenerateDocumentationFile=false"]
+    if restored:
+        cmd.append("--no-restore")
+    proc = subprocess.run(cmd, cwd=str(app_root), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    if proc.returncode != 0 and restored:
+        cmd.remove("--no-restore")  # package set changed since the last restore
+        proc = subprocess.run(cmd, cwd=str(app_root), capture_output=True, text=True,
+                              encoding="utf-8", errors="replace")
     elapsed = time.perf_counter() - started
     if proc.returncode != 0:
         log = app_root / ".surface-ai-factory" / "build.log"
@@ -143,15 +155,39 @@ def build_app(app_root: Path, project: Path) -> tuple[tuple[str, str, str], Path
     return ("App builds (Release)", PASS, f"{plat} in {elapsed:.0f}s"), (exes[-1] if exes else None)
 
 
-def run_warmup(exe: Path, app_name: str, timeout: int) -> tuple[list[tuple[str, str, str]], dict]:
+def _app_log(exe: Path) -> Path:
+    return Path(os.environ["LOCALAPPDATA"]) / exe.stem / "logs" / f"app_{datetime.now():%Y%m%d}.log"
+
+
+def _npu_memory_note(exe: Path, log_offset: int = 0) -> str:
+    """Plain-language reason when the NPU ran out of memory during this warm-up (log lines after log_offset)."""
+    try:
+        with open(_app_log(exe), "rb") as f:
+            f.seek(log_offset)
+            fresh = f.read().decode("utf-8", errors="replace")
+        if "OUT_OF_HOST_MEMORY" in fresh:
+            others = other_npu_apps(str(exe))
+            return ("The NPU ran out of memory" + (f": close {', '.join(others)} and re-run preflight" if others
+                                                   else ": close other AI apps and re-run preflight"))
+    except OSError:
+        pass
+    return ""
+
+
+def run_warmup(exe: Path, app_name: str, timeout: int, full: bool = False) -> tuple[list[tuple[str, str, str]], dict]:
     report_path = Path(os.environ["LOCALAPPDATA"]) / app_name / "warmup.json"
     if report_path.exists():
         report_path.unlink()
-    stage.info("Warming up inside the app: loading on the NPU, compiling, running every sample prompt...")
-    stage.info("First time on a device this takes 1 to 4 minutes. Later runs take seconds.")
+    log_offset = _app_log(exe).stat().st_size if _app_log(exe).exists() else 0
+    stage.info("Warming up inside the app: loading the model, then rehearsing one request per mode")
+    stage.info(f"and as many more as fit in {timeout // 60} min. The first model compile on a device takes")
+    stage.info("1 to 3 minutes and is shared by every app built afterwards.")
     started = time.perf_counter()
+    args = [str(exe), "--warmup", "--deadline", str(max(60, timeout - 30))]
+    if full:
+        args.append("--full")
     try:
-        subprocess.run([str(exe), "--warmup"], timeout=timeout, check=False)
+        subprocess.run(args, timeout=timeout + 60, check=False)
     except subprocess.TimeoutExpired:
         return [("Warm-up in app", FAIL, f"timed out after {timeout}s")], {}
     elapsed = time.perf_counter() - started
@@ -162,17 +198,22 @@ def run_warmup(exe: Path, app_name: str, timeout: int) -> tuple[list[tuple[str, 
     primary = report.get("primary") or {}
     samples = report.get("samples") or []
     live = [s for s in samples if s.get("live")]
+    modes = report.get("modes") or []
+    rehearsed_modes = {s.get("modeId") for s in live}
+    all_modes = not modes or all(m in rehearsed_modes for m in modes)
+    memory = _npu_memory_note(exe, log_offset)
+    primary_ok = primary.get("live") and primary.get("device") == "NPU" and not primary.get("usingBackup")
     results = [
-        ("Primary model live on NPU",
-         PASS if primary.get("live") and primary.get("device") == "NPU" and not primary.get("usingBackup") else FAIL,
-         f"{primary.get('modelId')} on {primary.get('device')}, ready in {primary.get('loadSeconds')}s"),
-        ("Sample prompts run live",
-         PASS if samples and len(live) == len(samples) else (WARN if live else FAIL),
-         f"{len(live)}/{len(samples)} live" + (
+        ("Model live on this device", PASS if primary_ok else FAIL,
+         f"{primary.get('modelId')} on {primary.get('device')}, ready in {primary.get('loadSeconds')}s"
+         + ("" if primary_ok or not memory else f". {memory}")),
+        ("Every mode rehearsed live",
+         PASS if live and all_modes and len(live) == len(samples) else (WARN if live else FAIL),
+         f"{len(live)} request(s) across {len(rehearsed_modes)}/{len(modes) or 1} mode(s)" + (
              f", avg {sum(s['tokensPerSecond'] for s in live) / len(live):.1f} tok/s, "
              f"first token {sum(s['firstTokenMs'] for s in live) / len(live) / 1000:.1f}s" if live else "")),
         ("Replay safety net recorded", PASS if report.get("replayRecorded") else FAIL,
-         f"{report.get('replayRecorded', 0)} outputs recorded on this NPU"),
+         f"{report.get('replayRecorded', 0)} answers recorded on this device"),
     ]
     peak = max((s.get("peakNpuPercent") or 0 for s in live), default=0)
     results.append(("NPU activity observed", PASS if peak > 0 else WARN,
@@ -180,16 +221,59 @@ def run_warmup(exe: Path, app_name: str, timeout: int) -> tuple[list[tuple[str, 
                     "counters read 0%: show Task Manager NPU graph instead"))
     backup = report.get("backup")
     if backup:
-        results.append(("Backup model warm on NPU", PASS if backup.get("live") and backup.get("device") == "NPU" else WARN,
-                        f"{backup.get('modelId')} ready in {backup.get('loadSeconds')}s"))
+        results.append(("Backup model ready", PASS if backup.get("live") and backup.get("device") == "NPU" else WARN,
+                        f"{backup.get('modelId')} ready in {backup.get('loadSeconds')}s"
+                        + (" (already compiled on this device)" if backup.get("skipped") else "")))
     if report.get("error"):
         results.append(("Warm-up errors", FAIL, report["error"][:80]))
     results.append(("Warm-up duration", PASS, f"{elapsed:.0f}s"))
     return results, report
 
 
+def free_npu(base_url: str | None) -> list[str]:
+    """Unload models the Foundry Local service holds in memory. The NPU has limited host memory,
+    and a model left loaded by another tool makes the app's model fail with
+    ZE_RESULT_ERROR_OUT_OF_HOST_MEMORY. Unloading only frees memory; nothing is deleted."""
+    def loaded_models() -> list[str]:
+        if base_url:
+            try:
+                import requests
+                data = requests.get(f"{base_url}/openai/loadedmodels", timeout=10).json()
+                return [m if isinstance(m, str) else (m.get("id") or m.get("name") or "") for m in data or []]
+            except Exception:  # noqa: BLE001
+                pass
+        out = foundry_catalog._run_cli("service", "ps", timeout=30)
+        return re.findall(r"\s(\S+-npu:\d+|\S+-gpu:\d+|\S+-cpu:\d+)\s*$", out, flags=re.MULTILINE)
+
+    freed = []
+    for model in [m for m in loaded_models() if m]:
+        # The CLI waits for an in-flight load to finish before unloading, which can take minutes.
+        foundry_catalog._run_cli("model", "unload", model, timeout=240)
+        freed.append(model)
+    still = [m for m in loaded_models() if m]
+    return [m for m in freed if m not in still]
+
+
+NPU_MODULES = ("openvino_intel_npu_plugin", "qnnhtp", "amdxdna", "vaip")
+IGNORED_NPU_USERS = {"inference.service.agent", "python", "pythonw"}
+
+
+def other_npu_apps(own_exe: str | None = None) -> list[str]:
+    """Other running apps that have an NPU runtime loaded. They share the NPU's memory."""
+    pattern = "|".join(NPU_MODULES)
+    out = _ps("Get-Process | ForEach-Object { $p=$_; try { if ($p.Modules | Where-Object { $_.ModuleName -match '"
+              + pattern + "' }) { \"$($p.ProcessName)|$($p.Id)\" } } catch {} }", timeout=120)
+    apps = []
+    own = Path(own_exe).stem.lower() if own_exe else ""
+    for line in out.splitlines():
+        name = line.split("|")[0].strip()
+        if name and name.lower() not in IGNORED_NPU_USERS and name.lower() != own and name not in apps:
+            apps.append(name)
+    return apps
+
+
 def run_preflight(app_root: Path, download: bool = True, build: bool = True, warmup: bool = True,
-                  warmup_timeout: int = 900) -> bool:
+                  warmup_timeout: int = 780, full_rehearsal: bool = False, budget=None) -> bool:
     app_root = app_root.resolve()
     projects = [p for p in app_root.glob("src/*/*.csproj")]
     if not projects:
@@ -205,7 +289,9 @@ def run_preflight(app_root: Path, download: bool = True, build: bool = True, war
     for r in results:
         _echo(r)
 
-    model_results = ensure_models_cached(config, url, download) if url else []
+    # Leave at least 8 minutes of the budget for build and warm-up after any download.
+    download_timeout = int(max(60, budget.remaining - 480)) if budget else 3600
+    model_results = ensure_models_cached(config, url, download, download_timeout) if url else []
     for r in model_results:
         _echo(r)
     results += model_results
@@ -216,12 +302,34 @@ def run_preflight(app_root: Path, download: bool = True, build: bool = True, war
 
     warm_report: dict = {}
     if build and dotnet[1] == PASS:
-        stage.info(f"Building {project.name} in Release...")
+        stage.info(f"Building {project.name} for this device (unpackaged, no publish)...")
         build_result, exe = build_app(app_root, project)
         _echo(build_result)
         results.append(build_result)
         if warmup and exe and not any(r[1] == FAIL for r in results):
-            warm_results, warm_report = run_warmup(exe, project.stem, warmup_timeout)
+            freed = free_npu(url)
+            if freed:
+                _echo(("NPU memory freed", PASS, f"unloaded {', '.join(freed)} from the Foundry Local service"))
+            sharing = other_npu_apps(str(exe))
+            if sharing:
+                shared = ("NPU shared with other apps", WARN,
+                          f"{', '.join(sharing)} {'also use' if len(sharing) > 1 else 'also uses'} the NPU; close before the show")
+                _echo(shared)
+                results.append(shared)
+            if budget:
+                warmup_timeout = int(min(warmup_timeout, max(120, budget.remaining - 60)))
+            started = time.monotonic()
+            warm_results, warm_report = run_warmup(exe, project.stem, warmup_timeout, full_rehearsal)
+            # NPU out of memory (another app or service grabbed it): free it and retry once if time allows.
+            # The model is compiled by now, so the retry loads in seconds.
+            primary_failed = any(r[0] == "Model live on this device" and r[1] == FAIL for r in warm_results)
+            left = (budget.remaining - 60) if budget else (warmup_timeout - (time.monotonic() - started))
+            if primary_failed and "out of memory" in " ".join(r[2] for r in warm_results).lower() and left > 180:
+                for r in warm_results:
+                    _echo(r)
+                stage.warn("The NPU ran out of memory. Freeing it and retrying the warm-up once...")
+                free_npu(url)
+                warm_results, warm_report = run_warmup(exe, project.stem, int(left), full_rehearsal)
             for r in warm_results:
                 _echo(r)
             results += warm_results

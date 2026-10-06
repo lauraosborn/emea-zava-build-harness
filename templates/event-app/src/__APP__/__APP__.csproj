@@ -15,6 +15,10 @@
     <EnableMsixTooling>true</EnableMsixTooling>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- Local demo build only: English resources, no symbols, no MSIX packaging. -->
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <GenerateAppxPackageOnBuild>false</GenerateAppxPackageOnBuild>
+    <DebugType Condition="'$(Configuration)' == 'Release'">none</DebugType>
     <Version>1.0.0</Version>
     <Company>Zava</Company>
     <Product>__APP_TITLE__</Product>

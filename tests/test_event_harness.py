@@ -187,6 +187,70 @@ class GenerationTests(unittest.TestCase):
         self.assertEqual(failures, [])
         self.assertIn("preflight", [f.rule for f in section.findings if f.severity == "WARN"])
 
+    def test_app_first_design_checks_pass(self):
+        section = check_event_readiness(self.root)
+        passed = {f.rule for f in section.findings if f.severity == "PASS"}
+        for rule in ("app-first-wording", "industry-design", "local-ai-story", "secondary-tech-details"):
+            self.assertIn(rule, passed)
+
+    def test_field_service_idea_gets_field_profile_and_no_npu_wording(self):
+        cfg = json.loads((self.root / "src/JobNotesStudio/Assets/app-config.json").read_text(encoding="utf-8"))
+        self.assertEqual(cfg["industry"], "field")
+        self.assertNotIn("NPU", cfg["tagline"])
+        self.assertTrue(cfg["localDrivers"])
+        self.assertTrue(cfg["theme"]["accent"].startswith("#"))
+
+
+HOTEL_IDEA = ("Local AI Hotel Concierge: an on-device AI concierge for hotels that helps guests and hotel staff "
+              "without sending sensitive guest information to the cloud. A guest walks up to a kiosk, or staff use "
+              "a Surface at reception and say: \"We're a family of four. Suggest a rainy-day itinerary nearby, find "
+              "somewhere suitable for dinner, and explain how we get there.\" Multilingual Q&A and translation. "
+              "Staff ask: \"A guest in room 214 says the air conditioning isn't working. What should I check "
+              "before escalating it?\" Local RAG over hotel knowledge.")
+
+
+class IndustryDesignTests(unittest.TestCase):
+    def test_hotel_idea_becomes_a_hospitality_concierge(self):
+        spec = default_app_spec(HOTEL_IDEA, analyse_idea(HOTEL_IDEA))
+        self.assertEqual(spec.industry, "hospitality")
+        self.assertEqual(spec.title, "Hotel Concierge")
+        self.assertNotIn("NPU", spec.tagline)
+        names = [m["name"] for m in spec.modes]
+        self.assertEqual(names, ["Guest concierge", "Staff assistant", "Translate"])
+        self.assertTrue(spec.modes[0]["samplePrompts"][0].startswith("We're a family of four"))
+        self.assertTrue(spec.modes[1]["samplePrompts"][0].startswith("A guest in room 214"))
+        self.assertEqual(spec.local_drivers[0]["id"], "privacy")
+        self.assertTrue(spec.knowledge)
+        self.assertEqual(spec.knowledge_pack, "hospitality")
+
+    def test_hotel_app_ships_knowledge_pack(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            cat = catalog(variant("phi-4-mini", size=2200, cached=True), variant("qwen2.5-0.5b", size=330, cached=True))
+            analysis = analyse_idea(HOTEL_IDEA)
+            spec = default_app_spec(HOTEL_IDEA, analysis)
+            root = create_event_app(spec, select_models(analysis, cat), "hotel-concierge", tmp)
+            kb = root / "src" / "HotelConcierge" / "Assets" / "knowledge"
+            self.assertTrue((kb / "public" / "hotel-policies.md").exists())
+            self.assertTrue((kb / "staff" / "maintenance-hvac.md").exists())
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_unknown_industry_falls_back_to_general(self):
+        idea = "Help me rewrite messages to be friendlier"
+        spec = default_app_spec(idea, analyse_idea(idea))
+        self.assertEqual(spec.industry, "general")
+        self.assertEqual(len(spec.modes), 1)
+
+
+class LocalStorageTests(unittest.TestCase):
+    def test_default_output_is_under_the_user_profile_not_onedrive(self):
+        from event_flow import LOCAL_APPS_DIR, is_cloud_synced, local_work_dir
+        self.assertEqual(local_work_dir(None), LOCAL_APPS_DIR)
+        self.assertEqual(LOCAL_APPS_DIR.parent, Path.home())
+        self.assertTrue(is_cloud_synced(Path(r"C:\Users\x\OneDrive - Contoso\Documents")))
+        self.assertEqual(local_work_dir(r"C:\Users\x\OneDrive - Contoso\builds"), LOCAL_APPS_DIR)
+
 
 if __name__ == "__main__":
     unittest.main()

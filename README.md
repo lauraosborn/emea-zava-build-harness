@@ -5,15 +5,67 @@
 > **Built by Surface AI Factory.** A Microsoft Surface engineering prototype for Zava.
 > All AI inference runs locally on-device. No data leaves your device.
 
-Type a local app idea on stage. Within a few minutes the audience sees a Zava-branded
-WinUI 3 app running real inference on the NPU, with the model, the device and the live
-NPU utilisation shown on screen. Everything the original `ai-factory-harness` does
-(audit, guardrails, branding P0, GPU consent, compliance report, GitHub publish) is still
-here, and `--repo` and `--new` work exactly as before.
+Type a local app idea on stage. In under 25 minutes (typically about 9 on a fresh device, less once a
+model has been prepared) you get a Zava-branded WinUI 3 app built for the idea's industry, running
+real inference locally, stored on this device. Everything the original `ai-factory-harness` does
+(audit, guardrails, branding P0, GPU consent, compliance report, GitHub publish) is still here, and
+`--repo` and `--new` work exactly as before.
 
-![Generated app running live on the NPU](docs/app-live-on-npu.png)
+![A generated app: Hotel Concierge, answering from a private guest profile](docs/app-hotel-concierge.png)
 
 ---
+
+## Design rules for every generated app
+
+1. **App first.** The screen is about the job the app does for its users: title, plain-language
+   tagline, the modes (for example *Guest concierge*, *Staff assistant*, *Translate*), private context
+   fields and realistic sample requests. Hardware words never appear in the app's own wording; a
+   Section 11 check (`app-first-wording`) fails the build if they do.
+2. **Industry design.** `industry.py` detects the idea's industry (hospitality, healthcare, retail,
+   field service, finance, legal, education, public sector, software, or general) and sets the theme
+   (palette, light or dark, heading font, corner radius), the wording, the modes, the context fields
+   and the samples. Example requests written in quotes in the idea become the demo samples.
+3. **Why local, in plain language.** The app shows *Why this runs on this device*: the local-AI
+   drivers detected in the idea (private by design, works without the internet, instant, no
+   per-question cost, easier compliance), written for that industry.
+4. **Technical details are secondary.** Model, device, NPU use and speed sit in a slim ribbon at the
+   bottom; `Ctrl+I` opens a details drawer for technical audiences. This still meets the Section 1.2
+   transparency rules.
+5. **Grounded when the idea needs it.** Ideas that mention knowledge, documents, manuals, policies or
+   RAG get a local knowledge base (`Assets/knowledge/public` and `staff`), searched on the device
+   (BM25), with sources under every answer. Hospitality ships a sample hotel pack.
+6. **Stored on this device.** Apps are generated in `%USERPROFILE%\ZavaLiveBuilds`. Cloud-synced
+   folders (OneDrive) are refused and redirected, because sync slows builds and can evict files.
+
+## Speed: a 25 minute budget
+
+Measured on a Surface with an Intel Core Ultra 7 268V, from the hotel concierge idea to GO FOR SHOW:
+**5.6 minutes** on a device where the model had never been prepared, **about 2 minutes** after that.
+A second, different app (field service) took 1.4 minutes.
+
+| What | How |
+|---|---|
+| Hard budget | `--budget-minutes 25` (default). Download, build and warm-up are each limited to what is left |
+| No packaging | Local, unpackaged build only: no MSIX, no publish, no symbols, English resources only, restore skipped on rebuilds |
+| Shared model cache | Models and the compiled NPU cache live in `%LOCALAPPDATA%\ZavaLiveBuild`, shared by every generated app: each model is prepared once per device, not once per app |
+| Shorter rehearsal | Preflight rehearses one sample per mode, then more while time remains, then compiles the backup model. `--full-rehearsal` runs everything |
+| No slow AI assist | The optional sample-writing assist waits at most 25s, and is skipped when the idea already contains examples |
+| NPU memory | Before the warm-up, models left loaded in the Foundry Local service are unloaded, and other apps using the NPU are named. If the NPU runs out of memory, preflight frees it and retries once |
+
+## Answer quality from a small local model
+
+Small models drift, so every generated app gets the same guard rails:
+
+- **Format templates per mode** (for example one line per stop for itineraries; Steps then Escalate for
+  procedures), with rules that only allow facts from the retrieved knowledge.
+- **Document titles in the prompt** ("Places to eat nearby > Nonna Bea's"), so the model can tell a
+  restaurant from an attraction or a procedure.
+- **Low temperature (0.1)**, so rehearsed answers repeat on stage.
+- **Answer clean-up**: empty sections ("Escalate: N/A"), stray template brackets and tips tacked onto
+  every line are removed. Facts are never changed.
+- **Repetition guard** that stops looping answers and stops generation on the device, plus one automatic
+  retry if the model is still busy finishing the previous answer.
+- **Rehearsal**: preflight runs the samples live and records them for the labelled replay.
 
 ## The live flow
 
@@ -24,10 +76,10 @@ python harness.py --idea "A field service assistant that turns rough job notes i
 | Stage | What the audience sees |
 |---|---|
 | 1. Understand the idea | The workloads detected (documents, code, reasoning, speech, vision...) and the words that triggered them |
-| 2. Select models | A model card from the **live Foundry Local catalog** on this device: NPU-only primary, pinned build, size, licence, cached state, a small NPU backup and the reasons for the choice. A small model **on the NPU** then designs the app's title and sample prompts, streaming its tokens to the console |
-| 3. Generate the app | A complete WinUI 3 + Foundry Local SDK solution. Not a placeholder |
-| 4. Guardrails | The ten Surface AI Factory sections plus the new **Section 11: Live Event Readiness**, with Zava branding as P0 |
-| 5. Preflight | Builds the app, runs it headless with `--warmup` to compile the model for the NPU and run every sample live, records the replay safety net, then shows a **GO FOR SHOW** board |
+| 2. Design and select models | An **app design** card (industry, modes, grounding, why local) and a model card from the **live Foundry Local catalog**: NPU-only primary, pinned build, small NPU backup |
+| 3. Generate the app | A complete WinUI 3 + Foundry Local SDK solution in `%USERPROFILE%\ZavaLiveBuilds`. Not a placeholder |
+| 4. Guardrails | The ten Surface AI Factory sections plus **Section 11: Live Event Readiness** (now including the app-first, industry design, local-AI story, secondary details and local storage checks) |
+| 5. Preflight | Builds the app, warms the model and rehearses each mode live, records the replay safety net, then shows a **GO FOR SHOW** board with the time used |
 | 6. Publish | Local commit; pushes to `github.com/AI-Runs-Local` when `GITHUB_TOKEN` is set |
 
 A sample console transcript is in [docs/sample-run-fieldnote.log](docs/sample-run-fieldnote.log).
@@ -91,17 +143,21 @@ Two generated apps are produced in `.event-builds/` when you run the commands ab
 
 ![Replay safety net, clearly labelled](docs/app-replay-safety-net.png)
 
-### What the app shows the audience
+### What the app shows
 
-- **Local Inference** panel: model alias, exact build, execution provider, size, licence and a device badge (NPU / GPU (approved) / REPLAY)
-- Live **NPU utilisation** % and a 30-second graph, read from the same Windows counters Task Manager uses
-- **Tokens/sec**, **time to first token**, token count and model-ready time
-- **This device**: NPU and CPU names
-- **Why this model**: the selection reasons from the harness
-- **Inference log** of every run (device, tok/s, TTFT, NPU peak)
-- Zava branding, the `Built by Surface AI Factory` watermark, the transparency line and an About page
+- **Header:** organisation, app name and what it does in one line, a "Runs on this device" chip and
+  a network chip ("Offline, still working" for the airplane-mode moment)
+- **The app:** mode tabs, a private context panel (for example the guest profile), the request box,
+  three suggestions per mode and the answer, with the knowledge sources it used
+- **Why this runs on this device**, **What it knows** (the local documents) and **This session**
+  (memory only; `Ctrl+L` clears it for the next person)
+- **Ribbon:** Zava logo, the `Built by Surface AI Factory` watermark, model status, device and a short
+  transparency line, plus Details and About
+- **Details drawer (`Ctrl+I`):** model build, execution provider, size, licence, device badge, live NPU
+  graph, tokens/sec, time to first token, device names, why this model, recent runs and the replay switch
 
-Presenter shortcuts: `F5` or `Ctrl+Enter` run, `Esc` stop, `Ctrl+1..3` samples, `Ctrl+R` replay, `F11` full screen.
+Presenter shortcuts: `F2`-`F4` modes, `F5` or `Ctrl+Enter` run, `Esc` stop, `Ctrl+1..3` samples,
+`Ctrl+L` clear, `Ctrl+I` details, `Ctrl+R` replay, `F11` full screen.
 
 ---
 
@@ -134,16 +190,17 @@ python harness.py --idea "<your idea>" --model phi-4-mini --name "Zava Shift Han
 # Unattended (CI or rehearsal loops): never prompts, never downloads when a cached model fits
 python harness.py --idea "<your idea>" --non-interactive --overwrite
 
-# Before every session, on the presentation device
-python harness.py --preflight .event-builds\<app-folder>
+# Before every session, on the presentation device (folder name or full path)
+python harness.py --preflight hotel-concierge
 
 # Launch the app
-powershell -File .event-builds\<app-folder>\tools\Start-Demo.ps1
+powershell -File $env:USERPROFILE\ZavaLiveBuilds\<app-folder>\tools\Start-Demo.ps1
 ```
 
-Generated apps go to `--work-dir` (use `.event-builds`, which is git-ignored). Each app is
-its own git repo with `README.md`, `docs/DEMO-RUNBOOK.md` (checklists, stage script and
-recovery playbook), `models/model_catalog.json` and `.surface-ai-factory/` reports.
+Generated apps go to `%USERPROFILE%\ZavaLiveBuilds` (override with `--work-dir`; cloud-synced
+folders are redirected). Each app is its own git repo with `README.md`, `docs/DEMO-RUNBOOK.md`
+(checklists, stage script and recovery playbook), `models/model_catalog.json` and
+`.surface-ai-factory/` reports. Apps are built for this device only and are never packaged.
 
 ### Original modes (unchanged)
 
@@ -185,7 +242,12 @@ Fixes to shared code that also benefit the original modes:
 | `first-token-watchdog` | Stalls cannot hang the demo |
 | `labelled-replay` | Safety net exists and is labelled REPLAY |
 | `sample-prompts` | At least 3 rehearsed prompts with shortcuts |
-| `inference-panel` | Build, device, NPU graph, tok/s and TTFT on screen |
+| `inference-details` | Build, device, NPU graph, tok/s and TTFT available in the details drawer |
+| `app-first-wording` | No hardware talk in the title, tagline, modes or actions (FAIL) |
+| `industry-design` | An industry theme is applied |
+| `local-ai-story` | The app explains why it runs on the device |
+| `secondary-tech-details` | Model and device details live in the ribbon and drawer |
+| `local-storage` | The app folder is on this device, not in a cloud-synced folder |
 | `offline-indicator` | Network chip for the airplane-mode moment |
 | `presenter-shortcuts` | Run, stop, samples, replay, full screen |
 | `preflight` | Last preflight on this device was GO |
@@ -236,15 +298,17 @@ flowchart TD
 
 | File | Purpose |
 |---|---|
-| `event_flow.py` | The six-stage `--idea` flow and `--preflight` entry |
+| `event_flow.py` | The six-stage `--idea` flow, 25 minute budget, local output folder, `--preflight` entry |
+| `industry.py` | Industry profiles (theme, wording, modes, context fields, samples) and local-AI drivers |
 | `foundry_catalog.py` | Device catalog with three fallback layers |
 | `model_selector.py` | Workload detection, stage playbook, model plan, app spec |
-| `ai_assist.py` | Streams an app spec from a local NPU model; falls back to rules |
-| `event_builder.py` | Generates the app, README, runbook, model catalog |
+| `ai_assist.py` | Optional: a local model suggests samples; skipped when the idea has examples |
+| `event_builder.py` | Generates the app, knowledge pack, README, runbook, model catalog |
 | `event_checks.py` | Section 11 checks |
-| `preflight.py` | NPU, Foundry, EP, cache/download, build, warm-up, power |
+| `preflight.py` | NPU, Foundry, EP, cache/download, NPU memory, build, warm-up, power |
 | `stage.py` | Banner, stage headers, cards, GO board |
 | `templates/event-app/` | The app template (runtime ported from Local Transcription Studio) |
+| `templates/knowledge/` | Sample knowledge packs per industry (hospitality) |
 
 ## Tests
 
@@ -252,8 +316,9 @@ flowchart TD
 python -m unittest discover tests
 ```
 
-19 unit tests cover catalog parsing, model selection rules, guardrail defaults, AI-assist parsing,
-app generation (no leftover template tokens, pinned builds) and the Section 11 checks.
+25 unit tests cover catalog parsing, model selection rules, guardrail defaults, AI-assist parsing,
+app generation (no leftover template tokens, pinned builds), industry design, local storage and the
+Section 11 checks.
 
 ---
 

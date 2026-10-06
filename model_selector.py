@@ -307,19 +307,49 @@ class AppSpec:
     input_label: str
     sample_prompts: list[str]
     generated_by: str = "rules"
+    industry: str = "general"
+    industry_name: str = "General"
+    organisation: str = "Zava"
+    theme: dict = field(default_factory=dict)
+    modes: list[dict] = field(default_factory=list)
+    context_title: str = ""
+    context_fields: list[dict] = field(default_factory=list)
+    local_drivers: list[dict] = field(default_factory=list)
+    knowledge: bool = False
+    knowledge_pack: str | None = None
+    languages: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
 
 
+_NAME_PREFIX = re.compile(r"^\s*(?:local\s+ai\s+|on-?device\s+ai\s+|ai\s+)?([A-Z][\w&' -]{2,40}?)\s*[:\n]",
+                          re.IGNORECASE)
+
+
 def title_from_idea(idea: str) -> str:
+    named = _NAME_PREFIX.match(idea)
+    if named:
+        return named.group(1).strip()
     words = re.findall(r"[A-Za-z0-9+'-]+", idea)
     core = [w for w in words if w.lower() not in FILLER]
     title = " ".join(w if w.isupper() else w.capitalize() for w in core[:3]) or "Local Assistant"
-    if not re.search(r"(assistant|agent|studio|copilot|coach|helper|bot|builder|analy[sz]er)$",
+    if not re.search(r"(assistant|agent|studio|copilot|coach|helper|bot|builder|analy[sz]er|concierge)$",
                      title, re.IGNORECASE):
         title += " Assistant"
     return title
+
+
+def tagline_from_idea(idea: str) -> str:
+    """The first descriptive sentence of the idea, without hardware talk. The app says what it does."""
+    raw = _NAME_PREFIX.sub("", idea, count=1) if _NAME_PREFIX.match(idea) else idea
+    text = re.sub(r"\s+", " ", raw).strip()
+    first = re.split(r"(?<=[.!?])\s|\s[-–]\s", text, maxsplit=1)[0].strip().rstrip(".")
+    first = re.sub(r"\b(on|using|via) (the )?NPU\b|\bNPU[- ]powered\b", "", first, flags=re.IGNORECASE)
+    first = re.sub(r"\s{2,}", " ", first).strip(" ,")
+    if len(first) > 170:
+        first = first[:167].rsplit(" ", 1)[0] + "..."
+    return first[:1].upper() + first[1:] if first else "Your on-device assistant"
 
 
 _SAMPLE_INPUTS = {
@@ -351,21 +381,110 @@ _SAMPLE_INPUTS = {
 }
 
 
+LANGUAGES = ["Spanish", "French", "German", "Italian", "Portuguese", "Polish", "Japanese",
+             "Mandarin Chinese", "Arabic"]
+
+ORG_BY_INDUSTRY = {
+    "hospitality": "Zava Harbour Hotel", "healthcare": "Zava Health", "retail": "Zava Stores",
+    "field": "Zava Field Services", "finance": "Zava Financial", "legal": "Zava Legal",
+    "education": "Zava Academy", "public": "Zava City Council", "software": "Zava Engineering",
+}
+
+
+def _mode_dict(mode, org: str, samples: list[str], knowledge: bool) -> dict:
+    grounding = (" Use ONLY the knowledge provided; if it does not cover something, say a colleague will check."
+                 if knowledge else " Never claim to browse the internet or call cloud services.")
+    # Small local models pad answers; these rules keep them short and stop invented extras.
+    style = (" Be concise: short lines, no introduction, no filler, and no websites, phone numbers, contact "
+             "details or booking advice unless the knowledge states them. Never invent names, IDs, reference "
+             "numbers or dates the user did not give; write ____ for anything missing. Keep it under 150 words.")
+    return {
+        "id": mode.id, "name": mode.name, "inputLabel": mode.input_label, "action": mode.action,
+        "outputTitle": mode.output_title,
+        "systemPrompt": mode.system_core.replace("{org}", org) + grounding + style,
+        "samplePrompts": samples[:3], "scopes": mode.scopes, "usesContext": mode.uses_context,
+        "usesLanguage": mode.uses_language, "defaultLanguage": "Spanish",
+        "topPassages": mode.top_passages if knowledge else 0,
+        "diversify": mode.diversify, "minRelativeScore": mode.min_relative_score,
+    }
+
+
+def _similar(a: str, b: str) -> bool:
+    wa, wb = (set(re.findall(r"[a-z]{4,}", s.lower())) for s in (a, b))
+    return bool(wa and wb) and len(wa & wb) / len(wa | wb) >= 0.45
+
+
+def _merge_samples(quotes: list[str], defaults: list[str]) -> list[str]:
+    """Idea examples first, then built-in samples that are not near-copies of them."""
+    merged = list(quotes)
+    for s in defaults:
+        if not any(_similar(s, m) for m in merged):
+            merged.append(s)
+    return merged[:3]
+
+
 def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None) -> AppSpec:
+    from industry import (GENERAL, ModeSpec, TRANSLATE_CORE, detect_drivers, detect_industry,
+                          is_staff_example, quoted_examples, theme_dict, wants_knowledge,
+                          wants_staff_mode, wants_translation)
+
     title = name or title_from_idea(idea)
-    samples = list(_SAMPLE_INPUTS.get(analysis.primary, _SAMPLE_INPUTS["general"]))
-    privacy = ("Treat everything the user shares as confidential. " if "privacy" in analysis.capabilities else "")
-    system = (
-        f"You are {title}, a Zava assistant running entirely on this device's NPU. "
-        f"Your purpose: {idea.strip().rstrip('.')}. "
-        f"{privacy}"
-        "Answer in under 150 words using short headings or bullet points. "
-        "Never claim to browse the internet or call cloud services."
-    )
+    profile = detect_industry(idea)
+    if profile is GENERAL and analysis.primary in _SAMPLE_INPUTS:
+        primary_samples = list(_SAMPLE_INPUTS[analysis.primary])
+    else:
+        primary_samples = list(profile.primary.samples)
+    org = ORG_BY_INDUSTRY.get(profile.id, "Zava")
+    knowledge = wants_knowledge(idea, profile)
+    staff = wants_staff_mode(idea, profile)
+
+    # Examples written into the idea are the demo the presenter has in mind: use them first.
+    quotes = quoted_examples(idea)
+    staff_quotes = [q for q in quotes if staff and is_staff_example(q)]
+    primary_quotes = [q for q in quotes if q not in staff_quotes]
+    primary_samples = _merge_samples(primary_quotes, primary_samples)
+
+    modes = [_mode_dict(profile.primary, org, primary_samples, knowledge)]
+    if staff:
+        staff_samples = _merge_samples(staff_quotes, profile.staff.samples)
+        modes.append(_mode_dict(profile.staff, org, staff_samples, knowledge))
+    if wants_translation(idea):
+        translate = ModeSpec("translate", "Translate", "Text to translate, or a topic to explain", "Translate",
+                             "Translation", TRANSLATE_CORE, [], scopes=["public"], uses_language=True,
+                             top_passages=2)
+        translate_samples = ([
+            "Translate for the guest: Your room will be ready at 3pm. You can leave your bags with us and use the spa while you wait.",
+            "Explain our breakfast times and the children's swimming pool times.",
+            "Summarise our checkout, late checkout and luggage storage options."] if profile.id == "hospitality" else [
+            "Translate: Thank you for waiting. Someone will be with you in about five minutes.",
+            "Summarise our opening hours and how to contact us.",
+            "Explain what happens next and how long it usually takes."])
+        modes.append(_mode_dict(translate, org, translate_samples, knowledge))
+        modes[-1]["systemPrompt"] = TRANSLATE_CORE.replace("{org}", org) + " Keep it under 120 words."
+
+    privacy = "Treat everything the user shares as confidential. " if "privacy" in analysis.capabilities else ""
+    system = modes[0]["systemPrompt"]
+    if privacy:
+        system = privacy + system
+        modes[0]["systemPrompt"] = system
+
     return AppSpec(
         title=title,
-        tagline=idea.strip().rstrip(".") + ". Running on-device on the NPU.",
+        tagline=tagline_from_idea(idea),
         system_prompt=system,
-        input_label="What would you like help with?",
-        sample_prompts=samples,
+        input_label=modes[0]["inputLabel"],
+        sample_prompts=modes[0]["samplePrompts"],
+        industry=profile.id,
+        industry_name=profile.name,
+        organisation=org,
+        theme=theme_dict(profile.theme),
+        modes=modes,
+        context_title=profile.context_title,
+        context_fields=[{"key": f.key, "label": f.label, "placeholder": f.placeholder}
+                        for f in profile.context_fields],
+        local_drivers=[{"id": d.id, "title": d.title, "detail": d.detail}
+                       for d in detect_drivers(idea, profile)],
+        knowledge=knowledge,
+        knowledge_pack=profile.knowledge_pack if knowledge else None,
+        languages=LANGUAGES if wants_translation(idea) else [],
     )

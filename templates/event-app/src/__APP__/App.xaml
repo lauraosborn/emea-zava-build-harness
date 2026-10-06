@@ -1,68 +1,83 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+    Palette defaults. At start-up App.ApplyTheme recolours these brushes in place with the
+    industry theme from app-config.json, so every style below follows the brand.
+-->
 <Application
     x:Class="__APP__.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    RequestedTheme="Dark">
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <XamlControlsResources xmlns="using:Microsoft.UI.Xaml.Controls" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Zava / Surface AI Factory stage palette: near-black, monochrome, one accent per state -->
-            <Color x:Key="CanvasColor">#07090D</Color>
-            <Color x:Key="PanelColor">#10141B</Color>
-            <Color x:Key="Panel2Color">#161B24</Color>
-            <Color x:Key="StrokeColor">#262D3A</Color>
-            <Color x:Key="InkColor">#F4F6FA</Color>
-            <Color x:Key="InkSecondaryColor">#B4BDCB</Color>
-            <Color x:Key="InkMutedColor">#76808F</Color>
-            <Color x:Key="NpuColor">#3FD07A</Color>
-            <Color x:Key="BlueColor">#5AA9FF</Color>
-            <Color x:Key="AmberColor">#F2C14E</Color>
-            <Color x:Key="RedColor">#FF6B6B</Color>
+            <SolidColorBrush x:Key="CanvasBrush" Color="#F6F7F9" />
+            <SolidColorBrush x:Key="PanelBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="Panel2Brush" Color="#EEF0F4" />
+            <SolidColorBrush x:Key="StrokeBrush" Color="#DFE3EA" />
+            <SolidColorBrush x:Key="InkBrush" Color="#171B22" />
+            <SolidColorBrush x:Key="InkSecondaryBrush" Color="#4A5160" />
+            <SolidColorBrush x:Key="InkMutedBrush" Color="#8A8F98" />
+            <SolidColorBrush x:Key="AccentBrush" Color="#2F5BD3" />
+            <SolidColorBrush x:Key="AccentInkBrush" Color="#FFFFFF" />
+            <SolidColorBrush x:Key="AccentSoftBrush" Color="#E5ECFB" />
 
-            <SolidColorBrush x:Key="CanvasBrush" Color="{StaticResource CanvasColor}" />
-            <SolidColorBrush x:Key="PanelBrush" Color="{StaticResource PanelColor}" />
-            <SolidColorBrush x:Key="Panel2Brush" Color="{StaticResource Panel2Color}" />
-            <SolidColorBrush x:Key="StrokeBrush" Color="{StaticResource StrokeColor}" />
-            <SolidColorBrush x:Key="InkBrush" Color="{StaticResource InkColor}" />
-            <SolidColorBrush x:Key="InkSecondaryBrush" Color="{StaticResource InkSecondaryColor}" />
-            <SolidColorBrush x:Key="InkMutedBrush" Color="{StaticResource InkMutedColor}" />
-            <SolidColorBrush x:Key="NpuBrush" Color="{StaticResource NpuColor}" />
-            <SolidColorBrush x:Key="BlueBrush" Color="{StaticResource BlueColor}" />
-            <SolidColorBrush x:Key="AmberBrush" Color="{StaticResource AmberColor}" />
-            <SolidColorBrush x:Key="RedBrush" Color="{StaticResource RedColor}" />
+            <!-- Status colours: green = answered on this device, amber = labelled replay -->
+            <SolidColorBrush x:Key="NpuBrush" Color="#1E8E4F" />
+            <SolidColorBrush x:Key="BlueBrush" Color="#2F6FD6" />
+            <SolidColorBrush x:Key="AmberBrush" Color="#B7791F" />
+            <SolidColorBrush x:Key="RedBrush" Color="#C53030" />
+
+            <FontFamily x:Key="DisplayFont">Segoe UI Variable Display</FontFamily>
+
+            <!-- Accent buttons follow the brand (lightweight styling keys) -->
+            <StaticResource x:Key="AccentButtonBackground" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="AccentButtonBackgroundPointerOver" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="AccentButtonBackgroundPressed" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="AccentButtonForeground" ResourceKey="AccentInkBrush" />
+            <StaticResource x:Key="AccentButtonForegroundPointerOver" ResourceKey="AccentInkBrush" />
+            <StaticResource x:Key="AccentButtonForegroundPressed" ResourceKey="AccentInkBrush" />
+            <StaticResource x:Key="TextControlFocusedBorderBrush" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="TextControlBorderBrushFocused" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="SelectorBarItemPillFillBrush" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="HyperlinkButtonForeground" ResourceKey="AccentBrush" />
+            <StaticResource x:Key="ToggleSwitchFillOn" ResourceKey="AccentBrush" />
 
             <Style x:Key="Card" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource PanelBrush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource StrokeBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="12" />
-                <Setter Property="Padding" Value="20" />
+                <Setter Property="CornerRadius" Value="14" />
+                <Setter Property="Padding" Value="22" />
             </Style>
 
             <Style x:Key="InsetCard" TargetType="Border">
                 <Setter Property="Background" Value="{StaticResource Panel2Brush}" />
                 <Setter Property="BorderBrush" Value="{StaticResource StrokeBrush}" />
                 <Setter Property="BorderThickness" Value="1" />
-                <Setter Property="CornerRadius" Value="8" />
-                <Setter Property="Padding" Value="12" />
+                <Setter Property="CornerRadius" Value="10" />
+                <Setter Property="Padding" Value="14" />
             </Style>
 
             <Style x:Key="Chip" TargetType="Border">
-                <Setter Property="Background" Value="#14FFFFFF" />
-                <Setter Property="BorderBrush" Value="#30FFFFFF" />
-                <Setter Property="BorderThickness" Value="1" />
+                <Setter Property="Background" Value="{StaticResource AccentSoftBrush}" />
                 <Setter Property="CornerRadius" Value="14" />
                 <Setter Property="Padding" Value="12,5" />
             </Style>
 
+            <Style x:Key="Heading" TargetType="TextBlock">
+                <Setter Property="FontFamily" Value="{StaticResource DisplayFont}" />
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
+                <Setter Property="TextWrapping" Value="Wrap" />
+            </Style>
+
             <Style x:Key="Eyebrow" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
                 <Setter Property="FontSize" Value="12" />
-                <Setter Property="CharacterSpacing" Value="140" />
+                <Setter Property="FontWeight" Value="SemiBold" />
+                <Setter Property="CharacterSpacing" Value="60" />
                 <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
             </Style>
 
@@ -73,23 +88,27 @@
             </Style>
 
             <Style x:Key="Mono" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="13" />
+                <Setter Property="FontFamily" Value="Cascadia Mono, Consolas" />
+                <Setter Property="FontSize" Value="12" />
                 <Setter Property="Foreground" Value="{StaticResource InkSecondaryBrush}" />
                 <Setter Property="TextWrapping" Value="Wrap" />
             </Style>
 
             <Style x:Key="MetricValue" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
-                <Setter Property="FontSize" Value="26" />
+                <Setter Property="FontSize" Value="20" />
+                <Setter Property="FontWeight" Value="SemiBold" />
                 <Setter Property="Foreground" Value="{StaticResource InkBrush}" />
             </Style>
 
             <Style x:Key="MetricLabel" TargetType="TextBlock">
-                <Setter Property="FontFamily" Value="Consolas" />
                 <Setter Property="FontSize" Value="11" />
-                <Setter Property="CharacterSpacing" Value="100" />
                 <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
+            </Style>
+
+            <Style x:Key="Ribbon" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="12" />
+                <Setter Property="Foreground" Value="{StaticResource InkMutedBrush}" />
+                <Setter Property="VerticalAlignment" Value="Center" />
             </Style>
         </ResourceDictionary>
     </Application.Resources>

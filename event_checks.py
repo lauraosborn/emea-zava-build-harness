@@ -80,9 +80,50 @@ def check_event_readiness(root: Path) -> SectionResult:
     panel_markers = ("DeviceBadge", "NpuSparkline", "FirstTokenText", "TokenProgressText", "ModelIdText")
     missing = [m for m in panel_markers if m not in xaml_text]
     if not missing:
-        add(Finding(PASS, "inference-panel", "Live inference panel shows model build, device, NPU graph, tok/s and TTFT."))
+        add(Finding(PASS, "inference-details", "Model, device, NPU graph, tok/s and TTFT available in the details drawer."))
     else:
-        add(Finding(WARN, "inference-panel", f"Live inference panel is missing: {', '.join(missing)}."))
+        add(Finding(WARN, "inference-details", f"Local inference details are missing: {', '.join(missing)}."))
+
+    # App first: the screen is about the job the app does, not the hardware.
+    hardware = re.compile(r"\bNPU\b", re.IGNORECASE)
+    user_facing = [config.get("appTitle", ""), config.get("tagline", ""), config.get("inputLabel", "")]
+    for mode in config.get("modes") or []:
+        user_facing += [mode.get("name", ""), mode.get("inputLabel", ""), mode.get("action", ""),
+                        mode.get("outputTitle", "")]
+    leaks = [t for t in user_facing if t and hardware.search(t)]
+    if leaks:
+        add(Finding(FAIL, "app-first-wording",
+                    f"Hardware talk in the app's own wording: {leaks[0][:60]!r}.", str(path or ""),
+                    "Describe what the app does for its users; keep model and device details in the ribbon."))
+    else:
+        add(Finding(PASS, "app-first-wording", "Title, tagline, modes and actions describe the job, not the hardware."))
+
+    theme = config.get("theme") or {}
+    if theme.get("accent") and config.get("industry"):
+        add(Finding(PASS, "industry-design",
+                    f"{config['industry']} theme (accent {theme['accent']}, {theme.get('displayFont', 'default font')})."))
+    else:
+        add(Finding(WARN, "industry-design", "No industry theme in app-config.json: the app uses the default look.",
+                    fix="Regenerate with the current harness so the theme follows the idea's industry."))
+
+    if "LocalDriversPanel" in xaml_text and config.get("localDrivers"):
+        add(Finding(PASS, "local-ai-story",
+                    "Explains why it runs locally: " + "; ".join(d.get("title", "") for d in config["localDrivers"]) + "."))
+    else:
+        add(Finding(WARN, "local-ai-story", "The app does not explain why it runs on the device.",
+                    fix="Add localDrivers to app-config.json and show them in the main window."))
+
+    if "RibbonStatusText" in xaml_text and "DetailsDrawer" in xaml_text:
+        add(Finding(PASS, "secondary-tech-details", "Model and device details sit in the bottom ribbon and details drawer."))
+    else:
+        add(Finding(WARN, "secondary-tech-details", "Model and device details are not confined to a ribbon or drawer."))
+
+    from event_flow import is_cloud_synced
+    if is_cloud_synced(root.resolve()):
+        add(Finding(WARN, "local-storage", f"App folder is in a cloud-synced location: {root}.",
+                    fix="Generate into %USERPROFILE%\\ZavaLiveBuilds (the default)."))
+    else:
+        add(Finding(PASS, "local-storage", f"Stored on this device: {root.resolve()}."))
 
     if re.search(r"NetworkStatusChanged|GetInternetConnectionProfile", cs_text):
         add(Finding(PASS, "offline-indicator", "Network state chip supports the airplane-mode moment."))
