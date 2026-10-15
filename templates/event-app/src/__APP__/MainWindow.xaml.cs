@@ -223,7 +223,8 @@ public sealed partial class MainWindow : Window
 
     private void ApplyLayoutArchetype(AppConfig config)
     {
-        if (config.Workspace.Layout.Equals("inspection-console", StringComparison.OrdinalIgnoreCase))
+        if (config.Workspace.Layout.Equals("inspection-console", StringComparison.OrdinalIgnoreCase) ||
+            config.Workspace.Layout.Equals("visual-workbench", StringComparison.OrdinalIgnoreCase))
         {
             InspectionConsolePanel.Visibility = Visibility.Visible;
             MediaPanel.Visibility = Visibility.Collapsed;

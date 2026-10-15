@@ -157,6 +157,7 @@ def check_event_readiness(root: Path) -> SectionResult:
     if workspace.get("layout"):
         layout_marker = {
             "inspection-console": "InspectionConsolePanel",
+            "visual-workbench": "InspectionConsolePanel",
         }.get(workspace["layout"])
         if layout_marker and layout_marker in xaml_text:
             add(Finding(PASS, "layout-archetype",

@@ -123,10 +123,38 @@ def _copy_knowledge(spec: AppSpec, project_dir: Path) -> list[str]:
             shutil.copyfile(src, dest)
             docs.append(str(src.relative_to(pack)).replace("\\", "/"))
     elif spec.knowledge:
-        _write(target / "public" / "README.txt",
-               "Add Markdown files here (one topic per '## ' heading). They are searched on this device "
-               "and used to ground answers. Files in ../staff are only used by staff modes.\n")
+        _write(target / "public" / "local-records.md", dynamic_records_doc(spec))
+        _write(target / "staff" / "workflow-playbook.md", dynamic_playbook_doc(spec))
+        docs.extend(["public/local-records.md", "staff/workflow-playbook.md"])
     return docs
+
+
+def dynamic_records_doc(spec: AppSpec) -> str:
+    lines = [f"# {spec.title} local records", ""]
+    for item in (spec.workspace or {}).get("items", []):
+        lines += [
+            f"## {item.get('title', 'Work item')}",
+            f"Status: {item.get('status', 'Open')}. Priority: {item.get('priority', '')}.",
+            f"Context: {item.get('subtitle', '')}.",
+        ]
+        for key, value in (item.get("context") or {}).items():
+            lines.append(f"{key.title()}: {value}.")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def dynamic_playbook_doc(spec: AppSpec) -> str:
+    lines = [f"# {spec.title} workflow playbook", ""]
+    for mode in spec.modes:
+        lines += [
+            f"## {mode.get('name', 'Workflow')}",
+            mode.get("description") or mode.get("inputLabel") or "Use this workflow to progress the selected work item.",
+            f"Action: {mode.get('action', 'Run')}.",
+            f"Expected output: {mode.get('outputTitle', 'Result')}.",
+            "Use local records, uploaded evidence and shipped reference material only.",
+            "",
+        ]
+    return "\n".join(lines)
 
 
 def app_config(spec: AppSpec, plan: ModelPlan) -> dict:

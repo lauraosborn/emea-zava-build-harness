@@ -37,28 +37,17 @@ real inference locally, stored on this device. Everything the original `ai-facto
 6. **Stored on this device.** Apps are generated in `%USERPROFILE%\ZavaLiveBuilds`. Cloud-synced
    folders (OneDrive) are refused and redirected, because sync slows builds and can evict files.
 
-## Use-case blueprints
+## Dynamic product design
 
-The harness now has a use-case blueprint layer on top of the broad industry profiles. When an idea
-clearly describes a known scenario, the generated app becomes a purpose-built product with custom
-modes, context fields, sample prompts and local knowledge, rather than a generic assistant.
+The harness no longer uses fixed industry profiles or static use-case blueprints. A dynamic product
+designer reads the idea, infers the domain, creates realistic work records, chooses an interaction
+pattern, writes local reference material and seeds demo outputs. The goal is to start from the vague
+ask and turn it into a concrete working product flow.
 
-Generated apps use a simple industry application layout: the main page is the task form, media or
-document input, scenarios and result area. The local-AI explanation is no longer a main page panel;
-it is summarised in the bottom ribbon only, so the user experience is about the industry workflow
-rather than the technology. Presenter shortcuts still work, but user-facing navigation is named for
-the job the app performs.
-
-Blueprinted apps also open on real use-case records instead of a blank prompt. For example, the
-manufacturing quality blueprint starts with an inspection queue containing held components, batch
-IDs, stations, status, priority and telemetry. Selecting a record fills the production context and
-best demo prompt, so the prototype feels like a vertical SaaS workflow rather than a generic chat
-container.
-
-Blueprints can also select a layout archetype. The manufacturing quality blueprint uses an
-`inspection-console` archetype with a quality queue, selected case evidence image, status and priority,
-station telemetry, and direct actions such as **Run inspection** and **Get procedure**. This lets
-industry use cases diverge in structure instead of sharing one visible app framework.
+Generated apps open on real work, not a blank prompt. For example, a manufacturing quality idea
+becomes a visual workbench with held components, batch IDs, stations, status, priority, telemetry,
+evidence and direct actions such as **Run inspection** and **Get procedure**. The local-AI explanation
+is summarised in the bottom ribbon only, so the main experience is about the industry workflow.
 
 Every generated app ships with preloaded showcase data in `Assets/replay.json`, so it can demonstrate
 the best-path workflow immediately, even before NPU preflight records live model output. Blueprints
