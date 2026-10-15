@@ -154,6 +154,18 @@ def check_event_readiness(root: Path) -> SectionResult:
                     "Generated app does not open with a realistic domain work queue.",
                     fix="Add workspace items with context and prompts to the use-case blueprint."))
 
+    if workspace.get("layout"):
+        layout_marker = {
+            "inspection-console": "InspectionConsolePanel",
+        }.get(workspace["layout"])
+        if layout_marker and layout_marker in xaml_text:
+            add(Finding(PASS, "layout-archetype",
+                        f"App uses the '{workspace['layout']}' use-case-specific layout archetype."))
+        else:
+            add(Finding(WARN, "layout-archetype",
+                        f"Workspace requested layout '{workspace['layout']}' but the generated app did not render it.",
+                        fix="Add a matching generated layout section in MainWindow.xaml and code-behind."))
+
     replay = next(root.glob("src/*/Assets/replay.json"), None)
     seeded = False
     if replay and replay.exists():

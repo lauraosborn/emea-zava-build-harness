@@ -55,6 +55,11 @@ IDs, stations, status, priority and telemetry. Selecting a record fills the prod
 best demo prompt, so the prototype feels like a vertical SaaS workflow rather than a generic chat
 container.
 
+Blueprints can also select a layout archetype. The manufacturing quality blueprint uses an
+`inspection-console` archetype with a quality queue, selected case evidence image, status and priority,
+station telemetry, and direct actions such as **Run inspection** and **Get procedure**. This lets
+industry use cases diverge in structure instead of sharing one visible app framework.
+
 Every generated app ships with preloaded showcase data in `Assets/replay.json`, so it can demonstrate
 the best-path workflow immediately, even before NPU preflight records live model output. Blueprints
 that involve images or documents also ship a local demo asset and UI actions such as **Use demo image**

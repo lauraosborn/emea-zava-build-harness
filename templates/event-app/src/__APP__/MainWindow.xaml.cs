@@ -168,6 +168,7 @@ public sealed partial class MainWindow : Window
         BuildWorkspace(config);
         BuildKnowledgeCard();
         ConfigurePrototypeMedia(config);
+        ApplyLayoutArchetype(config);
 
         var modes = config.EffectiveModes;
         BuildWorkflowCards(modes);
@@ -220,6 +221,17 @@ public sealed partial class MainWindow : Window
         SelectWorkspaceItem(config.Workspace.Items[0]);
     }
 
+    private void ApplyLayoutArchetype(AppConfig config)
+    {
+        if (config.Workspace.Layout.Equals("inspection-console", StringComparison.OrdinalIgnoreCase))
+        {
+            InspectionConsolePanel.Visibility = Visibility.Visible;
+            MediaPanel.Visibility = Visibility.Collapsed;
+            WorkflowCardsPanel.Visibility = Visibility.Collapsed;
+            WorkflowHeadingText.Text = config.Workspace.Title;
+        }
+    }
+
     private void SelectWorkspaceItem(WorkspaceItemConfig item)
     {
         foreach (var field in item.Context)
@@ -227,6 +239,18 @@ public sealed partial class MainWindow : Window
                 box.Text = field.Value;
         if (!string.IsNullOrWhiteSpace(item.Prompt))
             PromptBox.Text = item.Prompt;
+        SelectedCaseTitleText.Text = item.Title;
+        SelectedCaseSubtitleText.Text = item.Subtitle;
+        SelectedCaseStatusText.Text = item.Status;
+        SelectedCasePriorityText.Text = item.Priority;
+        SelectedCaseTelemetryText.Text = item.Context.TryGetValue("telemetry", out var telemetry) ? telemetry : item.Subtitle;
+        if (_runtime.Config.Prototype.EnablesImageInput && !string.IsNullOrWhiteSpace(_runtime.Config.Prototype.DemoImage))
+        {
+            var uri = new Uri("ms-appx:///" + _runtime.Config.Prototype.DemoImage.Replace("\\", "/"));
+            InspectionCaseImage.Source = _runtime.Config.Prototype.DemoImage.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
+                ? new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource(uri)
+                : new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(uri);
+        }
         FocusPrompt();
     }
 
@@ -385,6 +409,24 @@ public sealed partial class MainWindow : Window
     private void ClearButton_Click(object sender, RoutedEventArgs e) => ClearSession();
 
     private void DetailsButton_Click(object sender, RoutedEventArgs e) => ToggleDetails();
+
+    private void ProcedureButton_Click(object sender, RoutedEventArgs e)
+    {
+        var assist = _runtime.Config.EffectiveModes.FirstOrDefault(m =>
+            m.Name.Contains("Assist", StringComparison.OrdinalIgnoreCase) ||
+            m.Action.Contains("procedure", StringComparison.OrdinalIgnoreCase));
+        if (assist is not null)
+        {
+            foreach (var item in ModeBar.Items)
+                if (item.Tag == assist)
+                {
+                    ModeBar.SelectedItem = item;
+                    break;
+                }
+            PromptBox.Text = assist.SamplePrompts.FirstOrDefault() ?? "Show me the procedure.";
+        }
+        FocusPrompt();
+    }
 
     private void UseDemoImageButton_Click(object sender, RoutedEventArgs e)
     {

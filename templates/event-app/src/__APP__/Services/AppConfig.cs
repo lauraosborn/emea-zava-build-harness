@@ -66,6 +66,7 @@ public sealed class WorkspaceItemConfig
 
 public sealed class WorkspaceConfig
 {
+    public string Layout { get; set; } = "";
     public string Title { get; set; } = "";
     public string Subtitle { get; set; } = "";
     public List<WorkspaceItemConfig> Items { get; set; } = new();

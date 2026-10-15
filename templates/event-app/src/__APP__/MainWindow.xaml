@@ -84,6 +84,36 @@
                     </StackPanel>
                 </Border>
 
+                <Border x:Name="InspectionConsolePanel" Grid.Row="1" Style="{StaticResource Card}" Visibility="Collapsed">
+                    <StackPanel Spacing="14">
+                        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
+                            <StackPanel>
+                                <TextBlock x:Name="SelectedCaseTitleText" Text="Selected case" Style="{StaticResource Heading}" FontSize="20" />
+                                <TextBlock x:Name="SelectedCaseSubtitleText" Style="{StaticResource Body}" FontSize="13" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Right" Spacing="4">
+                                <Border Style="{StaticResource Chip}" HorizontalAlignment="Right">
+                                    <TextBlock x:Name="SelectedCaseStatusText" Text="Status" FontSize="12" FontWeight="SemiBold" Foreground="{StaticResource AccentBrush}" />
+                                </Border>
+                                <TextBlock x:Name="SelectedCasePriorityText" Style="{StaticResource MetricLabel}" HorizontalAlignment="Right" />
+                            </StackPanel>
+                        </Grid>
+                        <Border Background="{StaticResource Panel2Brush}" CornerRadius="14" Padding="10">
+                            <Image x:Name="InspectionCaseImage" Stretch="Uniform" Height="210" />
+                        </Border>
+                        <Border Style="{StaticResource InsetCard}">
+                            <StackPanel Spacing="4">
+                                <TextBlock Text="Station telemetry" Style="{StaticResource MetricLabel}" />
+                                <TextBlock x:Name="SelectedCaseTelemetryText" Style="{StaticResource Mono}" />
+                            </StackPanel>
+                        </Border>
+                        <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                            <Button Grid.Column="0" Content="Run inspection" Click="RunButton_Click" Style="{StaticResource AccentButtonStyle}" Padding="14,10" />
+                            <Button Grid.Column="1" Content="Get procedure" Click="ProcedureButton_Click" Padding="14,10" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <Border Grid.Row="2" Style="{StaticResource Card}">
                     <StackPanel Spacing="14">
                         <TextBlock x:Name="InputLabelText" Style="{StaticResource Heading}" />

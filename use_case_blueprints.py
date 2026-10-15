@@ -155,6 +155,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
             "uploadPromptTemplate": "Uploaded component image: {fileName}. Inspect the visible manufacturing defect and recommend next checks.",
         },
         workspace={
+            "layout": "inspection-console",
             "title": "Inspection queue",
             "subtitle": "Open quality holds from Line 2",
             "items": [
