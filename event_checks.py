@@ -106,12 +106,12 @@ def check_event_readiness(root: Path) -> SectionResult:
         add(Finding(WARN, "industry-design", "No industry theme in app-config.json: the app uses the default look.",
                     fix="Regenerate with the current harness so the theme follows the idea's industry."))
 
-    if "LocalDriversPanel" in xaml_text and config.get("localDrivers"):
+    if "LocalStoryRibbonText" in xaml_text and config.get("localDrivers") and "Why this runs on this device" not in xaml_text:
         add(Finding(PASS, "local-ai-story",
-                    "Explains why it runs locally: " + "; ".join(d.get("title", "") for d in config["localDrivers"]) + "."))
+                    "Local-AI story is summarised in the ribbon: " + "; ".join(d.get("title", "") for d in config["localDrivers"]) + "."))
     else:
-        add(Finding(WARN, "local-ai-story", "The app does not explain why it runs on the device.",
-                    fix="Add localDrivers to app-config.json and show them in the main window."))
+        add(Finding(WARN, "local-ai-story", "Local-AI explanation should be a small ribbon note, not a main page panel.",
+                    fix="Add localDrivers to app-config.json and summarise them in the bottom ribbon only."))
 
     if "RibbonStatusText" in xaml_text and "DetailsDrawer" in xaml_text:
         add(Finding(PASS, "secondary-tech-details", "Model and device details sit in the bottom ribbon and details drawer."))

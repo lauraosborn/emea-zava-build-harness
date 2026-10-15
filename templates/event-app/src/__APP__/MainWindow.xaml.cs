@@ -158,13 +158,7 @@ public sealed partial class MainWindow : Window
         OrganisationText.Text = config.Organisation.ToUpperInvariant();
         DomainText.Text = config.Brand.Domain.ToUpperInvariant();
         BrandMarkIcon.Glyph = string.IsNullOrWhiteSpace(config.Brand.MarkGlyph) ? "\uE946" : config.Brand.MarkGlyph;
-        WorkflowLabelText.Text = config.Brand.WorkflowLabel.ToUpperInvariant();
         WorkflowHeadingText.Text = config.Brand.WorkflowLabel;
-        HeroTitleText.Text = config.AppTitle;
-        HeroSubtitleText.Text = config.Tagline;
-        HeroMetric1Text.Text = config.Brand.HeroMetric1;
-        HeroMetric2Text.Text = config.Brand.HeroMetric2;
-        HeroMetric3Text.Text = config.Brand.HeroMetric3;
 
         foreach (var language in config.Languages)
             LanguageBox.Items.Add(language);
@@ -259,33 +253,7 @@ public sealed partial class MainWindow : Window
             new() { Id = "privacy", Title = "Private by design", Detail = "Your data stays on this PC. Nothing is sent to a cloud AI service." },
             new() { Id = "offline", Title = "Works without the internet", Detail = "Answers keep coming when the network is down." }
         };
-        foreach (var d in drivers)
-        {
-            var glyph = d.Id switch
-            {
-                "privacy" => "\uE72E",
-                "offline" => "\uE701",
-                "speed" => "\uE945",
-                "cost" => "\uE8C7",
-                "compliance" => "\uE73E",
-                _ => "\uE946"
-            };
-            var row = new Grid { ColumnSpacing = 12 };
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-            row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            row.Children.Add(new Border
-            {
-                Width = 34, Height = 34, CornerRadius = new CornerRadius(17), VerticalAlignment = VerticalAlignment.Top,
-                Background = BrushRes("AccentSoftBrush"),
-                Child = new FontIcon { Glyph = glyph, FontSize = 15, Foreground = BrushRes("AccentBrush") }
-            });
-            var text = new StackPanel { Spacing = 2 };
-            text.Children.Add(new TextBlock { Text = d.Title, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 14, Foreground = BrushRes("InkBrush"), TextWrapping = TextWrapping.Wrap });
-            text.Children.Add(new TextBlock { Text = d.Detail, Style = Res("Body"), FontSize = 13 });
-            Grid.SetColumn(text, 1);
-            row.Children.Add(text);
-            LocalDriversPanel.Children.Add(row);
-        }
+        LocalStoryRibbonText.Text = "Local: " + string.Join(" · ", drivers.Take(3).Select(d => d.Title));
     }
 
     private void BuildKnowledgeCard()

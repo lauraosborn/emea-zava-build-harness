@@ -43,10 +43,11 @@ The harness now has a use-case blueprint layer on top of the broad industry prof
 clearly describes a known scenario, the generated app becomes a purpose-built product with custom
 modes, context fields, sample prompts and local knowledge, rather than a generic assistant.
 
-Generated apps also use an enterprise UI shell: an industry-specific mark, domain label, KPI tiles,
-workflow cards with icons and descriptions, and scenario language in the main flow. The old visible
-`F2`/`F3`/`F4` mode labels have been removed from the UI; presenter shortcuts still work, but the
-user-facing navigation is now named for the job the app performs.
+Generated apps use a simple industry application layout: the main page is the task form, media or
+document input, scenarios and result area. The local-AI explanation is no longer a main page panel;
+it is summarised in the bottom ribbon only, so the user experience is about the industry workflow
+rather than the technology. Presenter shortcuts still work, but user-facing navigation is named for
+the job the app performs.
 
 Every generated app ships with preloaded showcase data in `Assets/replay.json`, so it can demonstrate
 the best-path workflow immediately, even before NPU preflight records live model output. Blueprints
