@@ -145,6 +145,31 @@ def check_event_readiness(root: Path) -> SectionResult:
                     "Generated UI is missing domain branding or described workflow cards.",
                     fix="Regenerate with a harness that writes brand metadata plus mode descriptions/icons."))
 
+    replay = next(root.glob("src/*/Assets/replay.json"), None)
+    seeded = False
+    if replay and replay.exists():
+        try:
+            seeded = len(json.loads(replay.read_text(encoding="utf-8"))) >= max(1, len(config.get("modes") or []))
+        except json.JSONDecodeError:
+            seeded = False
+    if seeded:
+        add(Finding(PASS, "showcase-demo-data", "Preloaded demo responses are shipped so the prototype is immediately showable."))
+    else:
+        add(Finding(FAIL, "showcase-demo-data", "No preloaded demo responses found.",
+                    str(replay or ""), "Seed Assets/replay.json with best-path demo outputs for every workflow."))
+
+    prototype = config.get("prototype") or {}
+    if prototype.get("enablesImageInput"):
+        demo_rel = str(prototype.get("demoImage") or "")
+        asset_root = path.parent if path else None
+        demo_subpath = demo_rel[7:] if demo_rel.replace("\\", "/").startswith("Assets/") else demo_rel
+        demo_path = asset_root / demo_subpath if asset_root and demo_rel else None
+        if "MediaPanel" in xaml_text and "UploadImageButton_Click" in cs_text and demo_path and demo_path.exists():
+            add(Finding(PASS, "media-demo-flow", "Image workflow includes a preloaded demo asset and local upload action."))
+        else:
+            add(Finding(FAIL, "media-demo-flow", "Image workflow is missing its demo asset or upload UI.",
+                        str(demo_path or ""), "Ship a demo image and show Use demo image / Upload image actions."))
+
     preflight = root / ".surface-ai-factory" / "preflight-report.json"
     if preflight.exists():
         try:

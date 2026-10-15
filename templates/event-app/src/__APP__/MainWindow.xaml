@@ -144,6 +144,22 @@
                             <ComboBox x:Name="LanguageBox" MinWidth="200" />
                         </StackPanel>
 
+                        <Border x:Name="MediaPanel" Style="{StaticResource InsetCard}" Visibility="Collapsed">
+                            <Grid ColumnDefinitions="180,*" ColumnSpacing="14">
+                                <Border Background="{StaticResource PanelBrush}" BorderBrush="{StaticResource StrokeBrush}" BorderThickness="1" CornerRadius="12" Padding="6">
+                                    <Image x:Name="DemoImage" Stretch="Uniform" Height="120" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Spacing="8">
+                                    <TextBlock x:Name="DemoImageLabelText" Style="{StaticResource Heading}" FontSize="16" />
+                                    <TextBlock Style="{StaticResource Body}" Text="Use the preloaded example for a guaranteed demo, or upload an image from this device. The file name is used to drive the local workflow; no image is sent to cloud AI." />
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <Button Content="Use demo image" Click="UseDemoImageButton_Click" Padding="12,6" />
+                                        <Button Content="Upload image" Click="UploadImageButton_Click" Padding="12,6" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
                         <Grid ColumnDefinitions="*,Auto" ColumnSpacing="12">
                             <TextBox x:Name="PromptBox" AcceptsReturn="True" TextWrapping="Wrap" MinHeight="64" MaxHeight="140"
                                      FontSize="16" PlaceholderText="Type a request" />

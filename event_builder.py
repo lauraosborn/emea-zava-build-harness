@@ -76,7 +76,8 @@ def create_event_app(spec: AppSpec, plan: ModelPlan, repo_name: str, work_dir: P
 
     config = app_config(spec, plan)
     _write(project_dir / "Assets" / "app-config.json", json.dumps(config, indent=2))
-    _write(project_dir / "Assets" / "replay.json", "[]\n")
+    _write(project_dir / "Assets" / "replay.json", json.dumps(seed_replay(spec, plan), indent=2) + "\n")
+    _write_demo_assets(spec, project_dir)
     knowledge_docs = _copy_knowledge(spec, project_dir)
 
     meta = root / ".surface-ai-factory"
@@ -141,6 +142,7 @@ def app_config(spec: AppSpec, plan: ModelPlan) -> dict:
         "contextFields": spec.context_fields,
         "localDrivers": spec.local_drivers,
         "brand": spec.brand,
+        "prototype": spec.prototype,
         "languages": spec.languages,
         "systemPrompt": spec.system_prompt,
         "inputLabel": spec.input_label,
@@ -152,6 +154,73 @@ def app_config(spec: AppSpec, plan: ModelPlan) -> dict:
         "maxTokens": 400,
         "temperature": 0.1,
     }
+
+
+def seed_replay(spec: AppSpec, plan: ModelPlan) -> list[dict]:
+    """Every generated app is immediately showable, even before model preflight."""
+    model_id = plan.primary.model_id if plan.primary else "prototype"
+    now = datetime.now(timezone.utc).isoformat()
+    entries: list[dict] = []
+    for mode in spec.modes:
+        prompts = mode.get("samplePrompts") or []
+        if not prompts:
+            continue
+        response = mode.get("demoResponse") or _generic_demo_response(spec, mode)
+        for prompt in prompts[:3]:
+            entries.append({
+                "prompt": f"[{mode.get('name', spec.title)}] {prompt}",
+                "response": response,
+                "modelId": model_id,
+                "device": "Prototype demo response",
+                "recordedAt": now,
+                "tokensPerSecond": 18.0,
+            })
+    upload_prompt = spec.prototype.get("uploadPromptTemplate") if spec.prototype else None
+    if upload_prompt and spec.modes:
+        mode = spec.modes[0]
+        entries.append({
+            "prompt": f"[{mode.get('name', spec.title)}] " + str(upload_prompt).replace("{fileName}", "uploaded-component.jpg"),
+            "response": mode.get("demoResponse") or _generic_demo_response(spec, mode),
+            "modelId": model_id,
+            "device": "Prototype demo response",
+            "recordedAt": now,
+            "tokensPerSecond": 18.0,
+        })
+    return entries
+
+
+def _generic_demo_response(spec: AppSpec, mode: dict) -> str:
+    return (f"## {mode.get('outputTitle') or 'Result'}\n"
+            f"This showcase prototype is ready for the **{mode.get('name', spec.title)}** workflow.\n\n"
+            f"- It uses the local app context and any shipped knowledge files.\n"
+            f"- It keeps the user's data on this device.\n"
+            f"- Run preflight to replace this seeded response with recorded on-device model output.")
+
+
+def _write_demo_assets(spec: AppSpec, project_dir: Path) -> None:
+    if not spec.prototype.get("enablesImageInput"):
+        return
+    demo = spec.prototype.get("demoImage") or "Assets/demo/demo-image.svg"
+    path = project_dir / str(demo).replace("/", "\\")
+    svg = """<svg xmlns="http://www.w3.org/2000/svg" width="900" height="560" viewBox="0 0 900 560">
+  <rect width="900" height="560" fill="#f4f5f3"/>
+  <rect x="90" y="90" width="720" height="380" rx="34" fill="#d8dde0" stroke="#6b7280" stroke-width="10"/>
+  <rect x="190" y="165" width="520" height="230" rx="22" fill="#b9c0c5" stroke="#384048" stroke-width="6"/>
+  <circle cx="282" cy="250" r="36" fill="#eef1f3" stroke="#384048" stroke-width="5"/>
+  <circle cx="618" cy="250" r="36" fill="#eef1f3" stroke="#384048" stroke-width="5"/>
+  <path d="M330 210 C390 185 482 190 552 218" fill="none" stroke="#8a4b19" stroke-width="13" stroke-linecap="round"/>
+  <ellipse cx="516" cy="222" rx="78" ry="34" fill="#c98a00" opacity="0.28"/>
+  <path d="M476 198 L570 248" stroke="#9b2c2c" stroke-width="7" stroke-linecap="round"/>
+  <g fill="#16191c" font-family="Segoe UI, Arial" font-size="28" font-weight="700">
+    <text x="90" y="55">A17 upper mount bracket · demo inspection image</text>
+  </g>
+  <g fill="#7c2d12" font-family="Segoe UI, Arial" font-size="22">
+    <text x="548" y="190">surface anomaly</text>
+    <text x="548" y="222">near mounting point</text>
+  </g>
+</svg>
+"""
+    _write(path, svg)
 
 
 def model_catalog(plan: ModelPlan) -> dict:

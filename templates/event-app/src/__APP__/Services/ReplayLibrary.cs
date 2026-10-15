@@ -68,7 +68,7 @@ public sealed class ReplayLibrary
             .Select(e => (entry: e, score: Jaccard(words, Words(e.Prompt))))
             .OrderByDescending(x => x.score)
             .First();
-        return best.score >= 0.35 ? best.entry : null;
+        return best.score >= 0.18 ? best.entry : null;
     }
 
     private static string Normalise(string s) => Regex.Replace(s.Trim().ToLowerInvariant(), @"\s+", " ");

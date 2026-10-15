@@ -13,6 +13,7 @@ public sealed class ModeConfig
     public string SystemPrompt { get; set; } = "";
     public string Description { get; set; } = "";
     public string Icon { get; set; } = "\uE946";
+    public string DemoResponse { get; set; } = "";
     public List<string> Scopes { get; set; } = new() { "public" };
     public bool UsesContext { get; set; }
     public bool UsesLanguage { get; set; }

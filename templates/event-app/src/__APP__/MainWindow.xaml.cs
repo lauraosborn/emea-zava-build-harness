@@ -10,6 +10,7 @@ using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Windows.Foundation;
 using Windows.Networking.Connectivity;
+using Windows.Storage.Pickers;
 
 namespace __APP__;
 
@@ -171,6 +172,7 @@ public sealed partial class MainWindow : Window
         BuildContextFields(config);
         BuildDrivers(config);
         BuildKnowledgeCard();
+        ConfigurePrototypeMedia(config);
 
         var modes = config.EffectiveModes;
         BuildWorkflowCards(modes);
@@ -182,6 +184,23 @@ public sealed partial class MainWindow : Window
 
         foreach (var reason in config.SelectionReasons)
             ReasonsPanel.Children.Add(new TextBlock { Text = "· " + reason, Style = Res("Body"), FontSize = 12 });
+    }
+
+    private void ConfigurePrototypeMedia(AppConfig config)
+    {
+        if (!config.Prototype.EnablesImageInput)
+            return;
+        MediaPanel.Visibility = Visibility.Visible;
+        DemoImageLabelText.Text = string.IsNullOrWhiteSpace(config.Prototype.DemoImageLabel)
+            ? "Preloaded demo image"
+            : config.Prototype.DemoImageLabel;
+        if (!string.IsNullOrWhiteSpace(config.Prototype.DemoImage))
+        {
+            var uri = new Uri("ms-appx:///" + config.Prototype.DemoImage.Replace("\\", "/"));
+            DemoImage.Source = config.Prototype.DemoImage.EndsWith(".svg", StringComparison.OrdinalIgnoreCase)
+                ? new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource(uri)
+                : new Microsoft.UI.Xaml.Media.Imaging.BitmapImage(uri);
+        }
     }
 
     private void BuildWorkflowCards(IReadOnlyList<ModeConfig> modes)
@@ -348,6 +367,43 @@ public sealed partial class MainWindow : Window
     private void ClearButton_Click(object sender, RoutedEventArgs e) => ClearSession();
 
     private void DetailsButton_Click(object sender, RoutedEventArgs e) => ToggleDetails();
+
+    private void UseDemoImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var prompt = _runtime.Config.Prototype.DemoImagePrompt;
+        if (!string.IsNullOrWhiteSpace(prompt))
+            PromptBox.Text = prompt;
+        FocusPrompt();
+    }
+
+    private async void UploadImageButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            var picker = new FileOpenPicker();
+            WinRT.Interop.InitializeWithWindow.Initialize(picker, WinRT.Interop.WindowNative.GetWindowHandle(this));
+            picker.FileTypeFilter.Add(".png");
+            picker.FileTypeFilter.Add(".jpg");
+            picker.FileTypeFilter.Add(".jpeg");
+            picker.FileTypeFilter.Add(".bmp");
+            picker.FileTypeFilter.Add(".webp");
+            picker.SuggestedStartLocation = PickerLocationId.PicturesLibrary;
+            var file = await picker.PickSingleFileAsync();
+            if (file is null)
+                return;
+            var template = _runtime.Config.Prototype.UploadPromptTemplate;
+            PromptBox.Text = string.IsNullOrWhiteSpace(template)
+                ? $"Uploaded image: {file.Name}. Analyse it."
+                : template.Replace("{fileName}", file.Name);
+            FocusPrompt();
+        }
+        catch (Exception ex)
+        {
+            AppLog.Write($"Image upload picker failed: {ex.Message}");
+            PromptBox.Text = "Uploaded component image: uploaded-component.jpg. Inspect the visible manufacturing defect and recommend next checks.";
+            FocusPrompt();
+        }
+    }
 
     private void ShowSources(AppRequest request, double retrievalMs)
     {

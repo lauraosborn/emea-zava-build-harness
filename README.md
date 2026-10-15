@@ -48,6 +48,12 @@ workflow cards with icons and descriptions, and scenario language in the main fl
 `F2`/`F3`/`F4` mode labels have been removed from the UI; presenter shortcuts still work, but the
 user-facing navigation is now named for the job the app performs.
 
+Every generated app ships with preloaded showcase data in `Assets/replay.json`, so it can demonstrate
+the best-path workflow immediately, even before NPU preflight records live model output. Blueprints
+that involve images or documents also ship a local demo asset and UI actions such as **Use demo image**
+and **Upload image**, so the prototype behaves like a working industry application instead of a bare
+chat surface.
+
 Current blueprints:
 
 | Blueprint | Generated experience |

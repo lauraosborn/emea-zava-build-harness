@@ -45,6 +45,15 @@ public sealed class BrandConfig
     public string HeroMetric3 { get; set; } = "Offline-ready";
 }
 
+public sealed class PrototypeConfig
+{
+    public bool EnablesImageInput { get; set; }
+    public string DemoImage { get; set; } = "";
+    public string DemoImageLabel { get; set; } = "";
+    public string DemoImagePrompt { get; set; } = "";
+    public string UploadPromptTemplate { get; set; } = "Uploaded file: {fileName}. Analyse it.";
+}
+
 /// <summary>
 /// The app's configuration, written by the Zava Live Build harness into Assets\app-config.json:
 /// what the app does and for whom (industry theme, modes, context fields, why it runs locally),
@@ -64,6 +73,7 @@ public sealed class AppConfig
     public List<ContextFieldConfig> ContextFields { get; set; } = new();
     public List<LocalDriver> LocalDrivers { get; set; } = new();
     public BrandConfig Brand { get; set; } = new();
+    public PrototypeConfig Prototype { get; set; } = new();
     public List<string> Languages { get; set; } = new();
     public string SystemPrompt { get; set; } = "You are a helpful assistant running on this device.";
     public string InputLabel { get; set; } = "What would you like help with?";

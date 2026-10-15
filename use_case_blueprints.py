@@ -24,6 +24,7 @@ class BlueprintMode:
     samples: tuple[str, ...]
     description: str
     icon: str
+    demo_response: str = ""
     scopes: tuple[str, ...] = ("public",)
     top_passages: int = 4
     diversify: bool = True
@@ -44,6 +45,7 @@ class Blueprint:
     knowledge_pack: str
     local_drivers: tuple[dict[str, str], ...]
     brand: dict[str, str]
+    prototype: dict[str, str | bool] = field(default_factory=dict)
     required_hits: int = 3
     exclusions: tuple[str, ...] = field(default_factory=tuple)
 
@@ -99,6 +101,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                 ),
                 "Capture a component finding and classify whether production can continue.",
                 "\uE722",
+                "Issue: Possible inconsistent surface finish on A17 upper mount bracket.\nEvidence: The visible dull circular patch and scoring near the upper mounting point match the local A17 reference hold criteria.\nImmediate action: Hold this part and the previous ten parts from Tool Station 4.\nNext check: Run Tool Station 4 calibration and inspect the tool tip for wear, built-up edge or debris.\nLine status: Continue only after a clean calibration coupon and supervisor release.",
             ),
             BlueprintMode(
                 "diagnose", "Diagnose", "Ask what caused the defect or fault", "Diagnose",
@@ -111,6 +114,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                 ),
                 "Connect the defect with station telemetry, fault codes and likely root cause.",
                 "\uE9D9",
+                "Issue: Inconsistent surface finish near the upper mounting point.\nEvidence: QI-217 plus sample telemetry show torque drift +8%, spindle vibration 4.8 mm/s and tool life 91%.\nPossible causes: Tool Station 4 wear, calibration drift, debris on the mount, or a recent tool-change issue.\nRecommended checks:\n1. Isolate the cell.\n2. Inspect the tool tip for wear flats and built-up edge.\n3. Run the A17 calibration coupon.\n4. Review the last tool-change event.\nEscalate if drift remains outside +/-3%.",
             ),
             BlueprintMode(
                 "assist", "Assist", "Ask for the maintenance procedure or next check", "Get procedure",
@@ -123,6 +127,7 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                 ),
                 "Retrieve the maintenance procedure and release checklist from local manuals.",
                 "\uE90F",
+                "Tool Station 4 calibration check:\n1. Press line pause and confirm the cell is isolated before opening the guard.\n2. Fit the certified A17 calibration coupon.\n3. Run the dry calibration cycle.\n4. Verify spindle vibration is below 3.5 mm/s.\n5. Compare commanded and measured torque; allowed drift is +/-3%.\n6. Inspect the tool tip for wear flats, built-up edge, scoring or debris.\n7. If out of limit, replace the tool, clean the mount and rerun calibration.\n8. Record the result, operator ID, component batch and held serial numbers in the quality log.",
                 top_passages=5,
                 min_relative_score=0.15,
             ),
@@ -140,6 +145,13 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
             "heroMetric1": "4 reference components",
             "heroMetric2": "3 local manuals",
             "heroMetric3": "Offline line support",
+        },
+        prototype={
+            "enablesImageInput": True,
+            "demoImage": "Assets/demo/a17-surface-defect.svg",
+            "demoImageLabel": "A17 upper mount bracket",
+            "demoImagePrompt": "Component A17 photo: faint circular scoring and dull surface patch near the upper mounting point. Inspect it.",
+            "uploadPromptTemplate": "Uploaded component image: {fileName}. Inspect the visible manufacturing defect and recommend next checks.",
         },
     ),
     Blueprint(

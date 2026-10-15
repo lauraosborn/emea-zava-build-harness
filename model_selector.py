@@ -319,6 +319,7 @@ class AppSpec:
     knowledge_pack: str | None = None
     languages: list[str] = field(default_factory=list)
     brand: dict = field(default_factory=dict)
+    prototype: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -450,7 +451,7 @@ def _default_brand(profile, org: str, knowledge: bool) -> dict:
 
 
 def _mode_dict(mode, org: str, samples: list[str], knowledge: bool, description: str | None = None,
-               icon: str | None = None) -> dict:
+               icon: str | None = None, demo_response: str | None = None) -> dict:
     grounding = (" Use ONLY the knowledge provided; if it does not cover something, say a colleague will check."
                  if knowledge else " Never claim to browse the internet or call cloud services.")
     # Small local models pad answers; these rules keep them short and stop invented extras.
@@ -463,6 +464,7 @@ def _mode_dict(mode, org: str, samples: list[str], knowledge: bool, description:
         "systemPrompt": mode.system_core.replace("{org}", org) + grounding + style,
         "samplePrompts": samples[:3], "scopes": mode.scopes, "usesContext": mode.uses_context,
         "description": description or _mode_description(mode), "icon": icon or _mode_icon(mode.id, mode.name),
+        "demoResponse": demo_response or "",
         "usesLanguage": mode.uses_language, "defaultLanguage": "Spanish",
         "topPassages": mode.top_passages if knowledge else 0,
         "diversify": mode.diversify, "minRelativeScore": mode.min_relative_score,
@@ -516,7 +518,8 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
                 top_passages=bp_mode.top_passages, diversify=bp_mode.diversify,
                 min_relative_score=bp_mode.min_relative_score)
             modes.append(_mode_dict(mode, org, list(bp_mode.samples), knowledge,
-                                    description=bp_mode.description, icon=bp_mode.icon))
+                                    description=bp_mode.description, icon=bp_mode.icon,
+                                    demo_response=bp_mode.demo_response))
     else:
         modes = [_mode_dict(profile.primary, org, primary_samples, knowledge)]
         if staff:
@@ -564,4 +567,5 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
         knowledge_pack=(blueprint.knowledge_pack if blueprint else profile.knowledge_pack) if knowledge else None,
         languages=LANGUAGES if wants_translation(idea) else [],
         brand=dict(blueprint.brand) if blueprint else _default_brand(profile, org, knowledge),
+        prototype=dict(blueprint.prototype) if blueprint else {},
     )
