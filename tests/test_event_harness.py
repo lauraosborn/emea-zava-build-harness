@@ -190,7 +190,7 @@ class GenerationTests(unittest.TestCase):
     def test_app_first_design_checks_pass(self):
         section = check_event_readiness(self.root)
         passed = {f.rule for f in section.findings if f.severity == "PASS"}
-        for rule in ("app-first-wording", "industry-design", "local-ai-story", "secondary-tech-details"):
+        for rule in ("app-first-wording", "industry-design", "local-ai-story", "secondary-tech-details", "enterprise-ui-shell"):
             self.assertIn(rule, passed)
 
     def test_field_service_idea_gets_field_profile_and_no_npu_wording(self):
@@ -199,6 +199,8 @@ class GenerationTests(unittest.TestCase):
         self.assertNotIn("NPU", cfg["tagline"])
         self.assertTrue(cfg["localDrivers"])
         self.assertTrue(cfg["theme"]["accent"].startswith("#"))
+        self.assertIn("brand", cfg)
+        self.assertTrue(all(m.get("description") and m.get("icon") for m in cfg["modes"]))
 
 
 HOTEL_IDEA = ("Local AI Hotel Concierge: an on-device AI concierge for hotels that helps guests and hotel staff "

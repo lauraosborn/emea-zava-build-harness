@@ -11,6 +11,8 @@ public sealed class ModeConfig
     public string Action { get; set; } = "Go";
     public string OutputTitle { get; set; } = "Result";
     public string SystemPrompt { get; set; } = "";
+    public string Description { get; set; } = "";
+    public string Icon { get; set; } = "\uE946";
     public List<string> Scopes { get; set; } = new() { "public" };
     public bool UsesContext { get; set; }
     public bool UsesLanguage { get; set; }

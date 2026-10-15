@@ -43,6 +43,11 @@ The harness now has a use-case blueprint layer on top of the broad industry prof
 clearly describes a known scenario, the generated app becomes a purpose-built product with custom
 modes, context fields, sample prompts and local knowledge, rather than a generic assistant.
 
+Generated apps also use an enterprise UI shell: an industry-specific mark, domain label, KPI tiles,
+workflow cards with icons and descriptions, and scenario language in the main flow. The old visible
+`F2`/`F3`/`F4` mode labels have been removed from the UI; presenter shortcuts still work, but the
+user-facing navigation is now named for the job the app performs.
+
 Current blueprints:
 
 | Blueprint | Generated experience |

@@ -155,6 +155,15 @@ public sealed partial class MainWindow : Window
         AppTitleText.Text = config.AppTitle;
         TaglineText.Text = config.Tagline;
         OrganisationText.Text = config.Organisation.ToUpperInvariant();
+        DomainText.Text = config.Brand.Domain.ToUpperInvariant();
+        BrandMarkIcon.Glyph = string.IsNullOrWhiteSpace(config.Brand.MarkGlyph) ? "\uE946" : config.Brand.MarkGlyph;
+        WorkflowLabelText.Text = config.Brand.WorkflowLabel.ToUpperInvariant();
+        WorkflowHeadingText.Text = config.Brand.WorkflowLabel;
+        HeroTitleText.Text = config.AppTitle;
+        HeroSubtitleText.Text = config.Tagline;
+        HeroMetric1Text.Text = config.Brand.HeroMetric1;
+        HeroMetric2Text.Text = config.Brand.HeroMetric2;
+        HeroMetric3Text.Text = config.Brand.HeroMetric3;
 
         foreach (var language in config.Languages)
             LanguageBox.Items.Add(language);
@@ -164,14 +173,50 @@ public sealed partial class MainWindow : Window
         BuildKnowledgeCard();
 
         var modes = config.EffectiveModes;
+        BuildWorkflowCards(modes);
         for (var i = 0; i < modes.Count; i++)
-            ModeBar.Items.Add(new SelectorBarItem { Text = modes.Count > 1 ? $"{modes[i].Name}  F{i + 2}" : modes[i].Name, Tag = modes[i] });
+            ModeBar.Items.Add(new SelectorBarItem { Text = modes[i].Name, Tag = modes[i] });
         ModeBar.Visibility = modes.Count > 1 ? Visibility.Visible : Visibility.Collapsed;
         if (ModeBar.Items.Count > 0)
             ModeBar.SelectedItem = ModeBar.Items[0];
 
         foreach (var reason in config.SelectionReasons)
             ReasonsPanel.Children.Add(new TextBlock { Text = "· " + reason, Style = Res("Body"), FontSize = 12 });
+    }
+
+    private void BuildWorkflowCards(IReadOnlyList<ModeConfig> modes)
+    {
+        WorkflowCardsPanel.Children.Clear();
+        for (var i = 0; i < modes.Count; i++)
+        {
+            var mode = modes[i];
+            var card = new Border { Style = (Style)Application.Current.Resources["WorkflowCard"] };
+            var grid = new Grid { ColumnSpacing = 12 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.Children.Add(new Border
+            {
+                Width = 38, Height = 38, CornerRadius = new CornerRadius(12), Background = BrushRes("AccentSoftBrush"),
+                Child = new FontIcon { Glyph = string.IsNullOrWhiteSpace(mode.Icon) ? "\uE946" : mode.Icon, FontSize = 18, Foreground = BrushRes("AccentBrush") }
+            });
+            var text = new StackPanel { Spacing = 2 };
+            text.Children.Add(new TextBlock { Text = mode.Name, FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, Foreground = BrushRes("InkBrush"), TextWrapping = TextWrapping.Wrap });
+            text.Children.Add(new TextBlock { Text = string.IsNullOrWhiteSpace(mode.Description) ? mode.InputLabel : mode.Description, Style = Res("Body"), FontSize = 12 });
+            Grid.SetColumn(text, 1);
+            grid.Children.Add(text);
+            var shortcut = new TextBlock { Text = $"{i + 1}", Style = Res("MetricLabel"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+            Grid.SetColumn(shortcut, 2);
+            grid.Children.Add(shortcut);
+            card.Child = grid;
+            var index = i;
+            card.Tapped += (_, _) =>
+            {
+                if (index < ModeBar.Items.Count)
+                    ModeBar.SelectedItem = ModeBar.Items[index];
+            };
+            WorkflowCardsPanel.Children.Add(card);
+        }
     }
 
     private void BuildContextFields(AppConfig config)

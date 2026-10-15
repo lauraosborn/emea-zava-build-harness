@@ -22,6 +22,8 @@ class BlueprintMode:
     output_title: str
     system_core: str
     samples: tuple[str, ...]
+    description: str
+    icon: str
     scopes: tuple[str, ...] = ("public",)
     top_passages: int = 4
     diversify: bool = True
@@ -41,6 +43,7 @@ class Blueprint:
     modes: tuple[BlueprintMode, ...]
     knowledge_pack: str
     local_drivers: tuple[dict[str, str], ...]
+    brand: dict[str, str]
     required_hits: int = 3
     exclusions: tuple[str, ...] = field(default_factory=tuple)
 
@@ -94,6 +97,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "Bracket B04 image shows burrs around two bolt holes and a bright scratch on the machined face. What is the likely defect?",
                     "Housing C22 photo: coating looks uneven on the top edge, but dimensions are within tolerance. Is this a hold?",
                 ),
+                "Capture a component finding and classify whether production can continue.",
+                "\uE722",
             ),
             BlueprintMode(
                 "diagnose", "Diagnose", "Ask what caused the defect or fault", "Diagnose",
@@ -104,6 +109,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "Fault QI-217 appeared twice after Tool Station 4 torque drifted above limit. What should I check first?",
                     "The last three parts from Cell 2 show chatter marks after the tool-change event. Diagnose the likely cause.",
                 ),
+                "Connect the defect with station telemetry, fault codes and likely root cause.",
+                "\uE9D9",
             ),
             BlueprintMode(
                 "assist", "Assist", "Ask for the maintenance procedure or next check", "Get procedure",
@@ -114,6 +121,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "What should I record before releasing the held A17 components?",
                     "Give me the offline troubleshooting steps for QI-217 when the network is disconnected.",
                 ),
+                "Retrieve the maintenance procedure and release checklist from local manuals.",
+                "\uE90F",
                 top_passages=5,
                 min_relative_score=0.15,
             ),
@@ -124,6 +133,14 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
             {"id": "privacy", "title": "Production data stays local", "detail": "Component photos, machine telemetry, fault codes and quality records stay on this workstation."},
             {"id": "speed", "title": "Low-latency operator support", "detail": "Operators get immediate checks at the line instead of waiting for a cloud round trip."},
         ),
+        brand={
+            "domain": "Manufacturing quality station",
+            "markGlyph": "\uE9D9",
+            "workflowLabel": "Inspection workflow",
+            "heroMetric1": "4 reference components",
+            "heroMetric2": "3 local manuals",
+            "heroMetric3": "Offline line support",
+        },
     ),
     Blueprint(
         id="patient-companion",
@@ -149,6 +166,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "Can I take ibuprofen if my discharge note says paracetamol first?",
                     "Explain my physio exercises in simple steps I can follow at home.",
                 ),
+                "Answer patient questions from approved discharge and aftercare guidance.",
+                "\uE95E",
                 scopes=("public", "staff"),
                 top_passages=5,
             ),
@@ -161,6 +180,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "What should I track before my wound check appointment?",
                     "Create a plain-English checklist for tomorrow's physiotherapy visit.",
                 ),
+                "Turn care-plan guidance into simple follow-up checklists.",
+                "\uE8FD",
                 scopes=("public", "staff"),
             ),
         ),
@@ -170,6 +191,14 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
             {"id": "offline", "title": "Useful at home or bedside", "detail": "Approved guidance remains available when Wi-Fi is poor or unavailable."},
             {"id": "compliance", "title": "Clinician-approved grounding", "detail": "Answers are constrained to the local care materials supplied by the clinical team."},
         ),
+        brand={
+            "domain": "Patient aftercare companion",
+            "markGlyph": "\uE95E",
+            "workflowLabel": "Care journey",
+            "heroMetric1": "Clinician-approved",
+            "heroMetric2": "Red-flag guidance",
+            "heroMetric3": "Offline at bedside",
+        },
     ),
     Blueprint(
         id="contract-review",
@@ -195,6 +224,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "Check this auto-renewal clause for customer risk and propose a fallback.",
                     "Summarise risks in a clause that excludes all indirect losses and all service credits.",
                 ),
+                "Review a clause against the local risk playbook.",
+                "\uE8A5",
                 scopes=("public", "staff"),
             ),
             BlueprintMode(
@@ -206,6 +237,8 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
                     "Create a fallback ladder for data-processing liability.",
                     "Draft a polite email requesting a 30-day termination right.",
                 ),
+                "Create a matter-ready fallback ladder and negotiation plan.",
+                "\uE8D7",
                 scopes=("public", "staff"),
             ),
         ),
@@ -215,5 +248,13 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
             {"id": "compliance", "title": "Grounded in the playbook", "detail": "Output is constrained to approved local clause guidance and review standards."},
             {"id": "offline", "title": "Works during travel", "detail": "Lawyers can review and prepare without reliable connectivity."},
         ),
+        brand={
+            "domain": "Legal matter workbench",
+            "markGlyph": "\uE8A5",
+            "workflowLabel": "Matter workflow",
+            "heroMetric1": "Clause playbook",
+            "heroMetric2": "Risk positions",
+            "heroMetric3": "Private by design",
+        },
     ),
 )

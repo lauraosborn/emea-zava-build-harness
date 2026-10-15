@@ -318,6 +318,7 @@ class AppSpec:
     knowledge: bool = False
     knowledge_pack: str | None = None
     languages: list[str] = field(default_factory=list)
+    brand: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -391,7 +392,65 @@ ORG_BY_INDUSTRY = {
 }
 
 
-def _mode_dict(mode, org: str, samples: list[str], knowledge: bool) -> dict:
+def _mode_icon(mode_id: str, mode_name: str) -> str:
+    text = f"{mode_id} {mode_name}".lower()
+    if any(w in text for w in ("inspect", "vision", "photo", "image")):
+        return "\uE722"
+    if any(w in text for w in ("diagnose", "engineer", "fault", "review")):
+        return "\uE9D9"
+    if any(w in text for w in ("assist", "procedure", "staff", "colleague", "admin")):
+        return "\uE90F"
+    if any(w in text for w in ("translate", "language")):
+        return "\uE8C1"
+    if any(w in text for w in ("guest", "concierge", "advisor")):
+        return "\uE719"
+    return "\uE946"
+
+
+def _mode_description(mode) -> str:
+    name = mode.name.lower()
+    if "inspect" in name:
+        return "Capture the field observation and classify what needs attention."
+    if "diagnose" in name or "engineer" in name:
+        return "Use local evidence to identify likely causes and first checks."
+    if "assist" in name or "staff" in name or "colleague" in name:
+        return "Retrieve the procedure, checklist or next action from local guidance."
+    if "translate" in name:
+        return "Translate or explain approved local information in the selected language."
+    if "concierge" in name or "advisor" in name:
+        return "Turn context and local knowledge into a ready-to-use recommendation."
+    return "Run the app's core workflow with private context held on this device."
+
+
+def _default_brand(profile, org: str, knowledge: bool) -> dict:
+    mark = {
+        "hospitality": "\uE707", "healthcare": "\uE95E", "retail": "\uE719",
+        "field": "\uE9D9", "finance": "\uE8C7", "legal": "\uE8A5",
+        "education": "\uE7BE", "public": "\uE80F", "software": "\uE943",
+    }.get(profile.id, "\uE946")
+    domain = {
+        "hospitality": "Guest operations console",
+        "healthcare": "Care-team workspace",
+        "retail": "Store colleague workbench",
+        "field": "Field service workbench",
+        "finance": "Advisor workbench",
+        "legal": "Matter workbench",
+        "education": "Learning support workspace",
+        "public": "Resident services console",
+        "software": "Engineering cockpit",
+    }.get(profile.id, f"{org} workspace")
+    return {
+        "domain": domain,
+        "markGlyph": mark,
+        "workflowLabel": "Workflow",
+        "heroMetric1": "Local knowledge" if knowledge else "Private context",
+        "heroMetric2": "On-device answers",
+        "heroMetric3": "Offline-ready",
+    }
+
+
+def _mode_dict(mode, org: str, samples: list[str], knowledge: bool, description: str | None = None,
+               icon: str | None = None) -> dict:
     grounding = (" Use ONLY the knowledge provided; if it does not cover something, say a colleague will check."
                  if knowledge else " Never claim to browse the internet or call cloud services.")
     # Small local models pad answers; these rules keep them short and stop invented extras.
@@ -403,6 +462,7 @@ def _mode_dict(mode, org: str, samples: list[str], knowledge: bool) -> dict:
         "outputTitle": mode.output_title,
         "systemPrompt": mode.system_core.replace("{org}", org) + grounding + style,
         "samplePrompts": samples[:3], "scopes": mode.scopes, "usesContext": mode.uses_context,
+        "description": description or _mode_description(mode), "icon": icon or _mode_icon(mode.id, mode.name),
         "usesLanguage": mode.uses_language, "defaultLanguage": "Spanish",
         "topPassages": mode.top_passages if knowledge else 0,
         "diversify": mode.diversify, "minRelativeScore": mode.min_relative_score,
@@ -455,7 +515,8 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
                 scopes=list(bp_mode.scopes), uses_context=True,
                 top_passages=bp_mode.top_passages, diversify=bp_mode.diversify,
                 min_relative_score=bp_mode.min_relative_score)
-            modes.append(_mode_dict(mode, org, list(bp_mode.samples), knowledge))
+            modes.append(_mode_dict(mode, org, list(bp_mode.samples), knowledge,
+                                    description=bp_mode.description, icon=bp_mode.icon))
     else:
         modes = [_mode_dict(profile.primary, org, primary_samples, knowledge)]
         if staff:
@@ -502,4 +563,5 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
         knowledge=knowledge,
         knowledge_pack=(blueprint.knowledge_pack if blueprint else profile.knowledge_pack) if knowledge else None,
         languages=LANGUAGES if wants_translation(idea) else [],
+        brand=dict(blueprint.brand) if blueprint else _default_brand(profile, org, knowledge),
     )

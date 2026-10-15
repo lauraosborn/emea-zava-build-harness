@@ -30,16 +30,23 @@
             <KeyboardAccelerator Key="F4" Invoked="Accelerator_Invoked" />
         </Grid.KeyboardAccelerators>
 
-        <!-- ── Header: what this app is ─────────────────────────────────────── -->
-        <Grid Padding="36,22,36,14" ColumnDefinitions="*,Auto" ColumnSpacing="20">
-            <StackPanel Spacing="4">
-                <TextBlock x:Name="OrganisationText" Style="{StaticResource Eyebrow}" Foreground="{StaticResource AccentBrush}" />
-                <TextBlock x:Name="AppTitleText" Text="__APP_TITLE__" FontSize="34"
+        <!-- ── Enterprise header: app identity + operational state ───────────── -->
+        <Grid Padding="32,20,32,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="18">
+            <Border Width="58" Height="58" CornerRadius="18" Background="{StaticResource AccentBrush}" VerticalAlignment="Top">
+                <FontIcon x:Name="BrandMarkIcon" Glyph="&#xE946;" FontSize="28" Foreground="{StaticResource AccentInkBrush}" />
+            </Border>
+            <StackPanel Grid.Column="1" Spacing="3">
+                <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock x:Name="OrganisationText" Style="{StaticResource Eyebrow}" Foreground="{StaticResource AccentBrush}" />
+                    <TextBlock Text="·" Style="{StaticResource Eyebrow}" />
+                    <TextBlock x:Name="DomainText" Style="{StaticResource Eyebrow}" />
+                </StackPanel>
+                <TextBlock x:Name="AppTitleText" Text="__APP_TITLE__" FontSize="36"
                            FontFamily="{StaticResource DisplayFont}" Foreground="{StaticResource InkBrush}" />
-                <TextBlock x:Name="TaglineText" Style="{StaticResource Body}" FontSize="15" MaxWidth="900"
+                <TextBlock x:Name="TaglineText" Style="{StaticResource Body}" FontSize="15" MaxWidth="920"
                            HorizontalAlignment="Left" />
             </StackPanel>
-            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" Margin="0,6,0,0">
+            <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="10" VerticalAlignment="Top" Margin="0,6,0,0">
                 <Border x:Name="PrivacyChip" Style="{StaticResource Chip}">
                     <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon Glyph="&#xE72E;" FontSize="13" Foreground="{StaticResource AccentBrush}" />
@@ -55,9 +62,60 @@
         </Grid>
 
         <!-- ── The app ───────────────────────────────────────────────────────── -->
-        <Grid Grid.Row="1" Padding="36,4,36,20" ColumnSpacing="24" ColumnDefinitions="2*,1*">
+        <Grid Grid.Row="1" Padding="32,4,32,20" ColumnSpacing="20" ColumnDefinitions="300,1.55*,0.9*">
 
-            <ScrollViewer x:Name="MainScroll" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
+            <ScrollViewer>
+                <StackPanel Spacing="16">
+                    <Border Style="{StaticResource HeroCard}">
+                        <StackPanel Spacing="16">
+                            <StackPanel Spacing="4">
+                                <TextBlock x:Name="WorkflowLabelText" Text="Workflow" Foreground="{StaticResource AccentInkBrush}"
+                                           FontSize="12" FontWeight="SemiBold" CharacterSpacing="50" />
+                                <TextBlock x:Name="HeroTitleText" Text="Ready for operations" Foreground="{StaticResource AccentInkBrush}"
+                                           FontFamily="{StaticResource DisplayFont}" FontSize="24" TextWrapping="Wrap" />
+                                <TextBlock x:Name="HeroSubtitleText" Foreground="{StaticResource AccentInkBrush}" Opacity="0.82"
+                                           FontSize="13" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8">
+                                <Border Background="#22FFFFFF" CornerRadius="10" Padding="10">
+                                    <StackPanel>
+                                        <TextBlock Text="Scope" Foreground="{StaticResource AccentInkBrush}" Opacity="0.72" FontSize="11" />
+                                        <TextBlock x:Name="HeroMetric1Text" Foreground="{StaticResource AccentInkBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="1" Background="#22FFFFFF" CornerRadius="10" Padding="10">
+                                    <StackPanel>
+                                        <TextBlock Text="Flow" Foreground="{StaticResource AccentInkBrush}" Opacity="0.72" FontSize="11" />
+                                        <TextBlock x:Name="HeroMetric2Text" Foreground="{StaticResource AccentInkBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" Background="#22FFFFFF" CornerRadius="10" Padding="10">
+                                    <StackPanel>
+                                        <TextBlock Text="Resilience" Foreground="{StaticResource AccentInkBrush}" Opacity="0.72" FontSize="11" />
+                                        <TextBlock x:Name="HeroMetric3Text" Foreground="{StaticResource AccentInkBrush}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel Spacing="10">
+                            <TextBlock x:Name="WorkflowHeadingText" Text="Workflows" Style="{StaticResource Heading}" FontSize="18" />
+                            <StackPanel x:Name="WorkflowCardsPanel" Spacing="0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel Spacing="8">
+                            <TextBlock Text="Keyboard" Style="{StaticResource Heading}" FontSize="16" />
+                            <TextBlock Style="{StaticResource Body}" Text="Run: F5 or Ctrl+Enter. Stop: Esc. Suggestions: Ctrl+1 to Ctrl+3. Details: Ctrl+I. Replay: Ctrl+R. Full screen: F11." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+
+            <ScrollViewer x:Name="MainScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
             <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
                 <SelectorBar x:Name="ModeBar" SelectionChanged="ModeBar_SelectionChanged" />
 
@@ -101,7 +159,7 @@
                         <TextBlock x:Name="ReadyText" Style="{StaticResource Body}" FontSize="12" />
 
                         <StackPanel Spacing="6">
-                            <TextBlock Text="Try" Style="{StaticResource MetricLabel}" />
+                            <TextBlock Text="Use-case scenarios" Style="{StaticResource MetricLabel}" />
                             <StackPanel x:Name="SamplesPanel" Spacing="6" />
                         </StackPanel>
                     </StackPanel>
@@ -137,7 +195,7 @@
             </ScrollViewer>
 
             <!-- ── Why local + what it knows ──────────────────────────────────── -->
-            <ScrollViewer Grid.Column="1">
+            <ScrollViewer Grid.Column="2">
                 <StackPanel Spacing="16">
                     <Border Style="{StaticResource Card}">
                         <StackPanel Spacing="14">

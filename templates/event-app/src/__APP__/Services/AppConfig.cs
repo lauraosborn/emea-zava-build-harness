@@ -35,6 +35,16 @@ public sealed class LocalDriver
     public string Detail { get; set; } = "";
 }
 
+public sealed class BrandConfig
+{
+    public string Domain { get; set; } = "Enterprise workspace";
+    public string MarkGlyph { get; set; } = "\uE946";
+    public string WorkflowLabel { get; set; } = "Workflow";
+    public string HeroMetric1 { get; set; } = "Private context";
+    public string HeroMetric2 { get; set; } = "On-device answers";
+    public string HeroMetric3 { get; set; } = "Offline-ready";
+}
+
 /// <summary>
 /// The app's configuration, written by the Zava Live Build harness into Assets\app-config.json:
 /// what the app does and for whom (industry theme, modes, context fields, why it runs locally),
@@ -53,6 +63,7 @@ public sealed class AppConfig
     public string ContextTitle { get; set; } = "";
     public List<ContextFieldConfig> ContextFields { get; set; } = new();
     public List<LocalDriver> LocalDrivers { get; set; } = new();
+    public BrandConfig Brand { get; set; } = new();
     public List<string> Languages { get; set; } = new();
     public string SystemPrompt { get; set; } = "You are a helpful assistant running on this device.";
     public string InputLabel { get; set; } = "What would you like help with?";

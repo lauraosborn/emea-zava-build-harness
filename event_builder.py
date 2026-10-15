@@ -140,6 +140,7 @@ def app_config(spec: AppSpec, plan: ModelPlan) -> dict:
         "contextTitle": spec.context_title,
         "contextFields": spec.context_fields,
         "localDrivers": spec.local_drivers,
+        "brand": spec.brand,
         "languages": spec.languages,
         "systemPrompt": spec.system_prompt,
         "inputLabel": spec.input_label,

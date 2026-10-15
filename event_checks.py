@@ -135,6 +135,16 @@ def check_event_readiness(root: Path) -> SectionResult:
     else:
         add(Finding(WARN, "presenter-shortcuts", "No presenter keyboard shortcuts."))
 
+    brand = config.get("brand") or {}
+    mode_descriptions = [m for m in config.get("modes") or [] if m.get("description") and m.get("icon")]
+    if brand.get("domain") and brand.get("markGlyph") and "WorkflowCardsPanel" in xaml_text and len(mode_descriptions) >= len(config.get("modes") or []):
+        add(Finding(PASS, "enterprise-ui-shell",
+                    f"Enterprise shell includes {brand.get('domain')} identity and described workflow cards."))
+    else:
+        add(Finding(WARN, "enterprise-ui-shell",
+                    "Generated UI is missing domain branding or described workflow cards.",
+                    fix="Regenerate with a harness that writes brand metadata plus mode descriptions/icons."))
+
     preflight = root / ".surface-ai-factory" / "preflight-report.json"
     if preflight.exists():
         try:
