@@ -145,6 +145,15 @@ def check_event_readiness(root: Path) -> SectionResult:
                     "Generated UI is missing domain branding or described workflow cards.",
                     fix="Regenerate with a harness that writes brand metadata plus mode descriptions/icons."))
 
+    workspace = config.get("workspace") or {}
+    if workspace.get("items") and "WorkspaceItemsPanel" in xaml_text and "SelectWorkspaceItem" in cs_text:
+        add(Finding(PASS, "saas-workbench-flow",
+                    f"App opens with {len(workspace['items'])} realistic work items in a domain queue."))
+    else:
+        add(Finding(WARN, "saas-workbench-flow",
+                    "Generated app does not open with a realistic domain work queue.",
+                    fix="Add workspace items with context and prompts to the use-case blueprint."))
+
     replay = next(root.glob("src/*/Assets/replay.json"), None)
     seeded = False
     if replay and replay.exists():

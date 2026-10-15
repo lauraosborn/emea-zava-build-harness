@@ -320,6 +320,7 @@ class AppSpec:
     languages: list[str] = field(default_factory=list)
     brand: dict = field(default_factory=dict)
     prototype: dict = field(default_factory=dict)
+    workspace: dict = field(default_factory=dict)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -568,4 +569,5 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
         languages=LANGUAGES if wants_translation(idea) else [],
         brand=dict(blueprint.brand) if blueprint else _default_brand(profile, org, knowledge),
         prototype=dict(blueprint.prototype) if blueprint else {},
+        workspace=dict(blueprint.workspace) if blueprint else {},
     )

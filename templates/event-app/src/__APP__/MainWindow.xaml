@@ -65,7 +65,17 @@
         <Grid Grid.Row="1" Padding="32,4,32,20" ColumnSpacing="20" ColumnDefinitions="0.95*,1.15*">
 
             <ScrollViewer x:Name="MainScroll" VerticalScrollBarVisibility="Auto" Padding="0,0,6,0">
-            <Grid RowDefinitions="Auto,Auto" RowSpacing="16">
+            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="16">
+                <Border x:Name="WorkspacePanel" Style="{StaticResource Card}" Visibility="Collapsed">
+                    <StackPanel Spacing="10">
+                        <StackPanel Spacing="2">
+                            <TextBlock x:Name="WorkspaceTitleText" Text="Work queue" Style="{StaticResource Heading}" FontSize="18" />
+                            <TextBlock x:Name="WorkspaceSubtitleText" Style="{StaticResource Body}" FontSize="12" />
+                        </StackPanel>
+                        <StackPanel x:Name="WorkspaceItemsPanel" Spacing="8" />
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource Card}">
                     <StackPanel Spacing="12">
                         <TextBlock x:Name="WorkflowHeadingText" Text="Workflow" Style="{StaticResource Heading}" FontSize="18" />
@@ -74,7 +84,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Grid.Row="1" Style="{StaticResource Card}">
+                <Border Grid.Row="2" Style="{StaticResource Card}">
                     <StackPanel Spacing="14">
                         <TextBlock x:Name="InputLabelText" Style="{StaticResource Heading}" />
 

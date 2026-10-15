@@ -54,6 +54,23 @@ public sealed class PrototypeConfig
     public string UploadPromptTemplate { get; set; } = "Uploaded file: {fileName}. Analyse it.";
 }
 
+public sealed class WorkspaceItemConfig
+{
+    public string Title { get; set; } = "";
+    public string Subtitle { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Priority { get; set; } = "";
+    public string Prompt { get; set; } = "";
+    public Dictionary<string, string> Context { get; set; } = new();
+}
+
+public sealed class WorkspaceConfig
+{
+    public string Title { get; set; } = "";
+    public string Subtitle { get; set; } = "";
+    public List<WorkspaceItemConfig> Items { get; set; } = new();
+}
+
 /// <summary>
 /// The app's configuration, written by the Zava Live Build harness into Assets\app-config.json:
 /// what the app does and for whom (industry theme, modes, context fields, why it runs locally),
@@ -74,6 +91,7 @@ public sealed class AppConfig
     public List<LocalDriver> LocalDrivers { get; set; } = new();
     public BrandConfig Brand { get; set; } = new();
     public PrototypeConfig Prototype { get; set; } = new();
+    public WorkspaceConfig Workspace { get; set; } = new();
     public List<string> Languages { get; set; } = new();
     public string SystemPrompt { get; set; } = "You are a helpful assistant running on this device.";
     public string InputLabel { get; set; } = "What would you like help with?";

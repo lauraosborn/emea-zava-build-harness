@@ -249,6 +249,8 @@ class IndustryDesignTests(unittest.TestCase):
         self.assertEqual(spec.context_title, "Production context")
         self.assertTrue(spec.knowledge)
         self.assertEqual(spec.knowledge_pack, "manufacturing-quality")
+        self.assertEqual(spec.workspace["title"], "Inspection queue")
+        self.assertEqual(len(spec.workspace["items"]), 3)
         self.assertIn("Tool Station 4", spec.modes[2]["samplePrompts"][0])
         self.assertEqual(spec.local_drivers[1]["id"], "privacy")
 
@@ -267,6 +269,7 @@ class IndustryDesignTests(unittest.TestCase):
             self.assertTrue((kb / "staff" / "fault-codes-and-telemetry.md").exists())
             cfg = json.loads((root / "src/AIQualityInspector/Assets/app-config.json").read_text(encoding="utf-8"))
             self.assertEqual([m["name"] for m in cfg["modes"]], ["Inspect", "Diagnose", "Assist"])
+            self.assertEqual(cfg["workspace"]["items"][0]["status"], "Hold")
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 

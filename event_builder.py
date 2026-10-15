@@ -143,6 +143,7 @@ def app_config(spec: AppSpec, plan: ModelPlan) -> dict:
         "localDrivers": spec.local_drivers,
         "brand": spec.brand,
         "prototype": spec.prototype,
+        "workspace": spec.workspace,
         "languages": spec.languages,
         "systemPrompt": spec.system_prompt,
         "inputLabel": spec.input_label,

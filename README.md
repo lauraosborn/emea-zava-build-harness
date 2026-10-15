@@ -49,6 +49,12 @@ it is summarised in the bottom ribbon only, so the user experience is about the 
 rather than the technology. Presenter shortcuts still work, but user-facing navigation is named for
 the job the app performs.
 
+Blueprinted apps also open on real use-case records instead of a blank prompt. For example, the
+manufacturing quality blueprint starts with an inspection queue containing held components, batch
+IDs, stations, status, priority and telemetry. Selecting a record fills the production context and
+best demo prompt, so the prototype feels like a vertical SaaS workflow rather than a generic chat
+container.
+
 Every generated app ships with preloaded showcase data in `Assets/replay.json`, so it can demonstrate
 the best-path workflow immediately, even before NPU preflight records live model output. Blueprints
 that involve images or documents also ship a local demo asset and UI actions such as **Use demo image**

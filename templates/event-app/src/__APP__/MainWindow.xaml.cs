@@ -165,6 +165,7 @@ public sealed partial class MainWindow : Window
 
         BuildContextFields(config);
         BuildDrivers(config);
+        BuildWorkspace(config);
         BuildKnowledgeCard();
         ConfigurePrototypeMedia(config);
 
@@ -178,6 +179,55 @@ public sealed partial class MainWindow : Window
 
         foreach (var reason in config.SelectionReasons)
             ReasonsPanel.Children.Add(new TextBlock { Text = "· " + reason, Style = Res("Body"), FontSize = 12 });
+    }
+
+    private void BuildWorkspace(AppConfig config)
+    {
+        if (config.Workspace.Items.Count == 0)
+            return;
+        WorkspacePanel.Visibility = Visibility.Visible;
+        WorkspaceTitleText.Text = string.IsNullOrWhiteSpace(config.Workspace.Title) ? "Work queue" : config.Workspace.Title;
+        WorkspaceSubtitleText.Text = config.Workspace.Subtitle;
+        WorkspaceItemsPanel.Children.Clear();
+        foreach (var item in config.Workspace.Items)
+        {
+            var button = new Button
+            {
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = HorizontalAlignment.Stretch,
+                Padding = new Thickness(0),
+                Background = BrushRes("PanelBrush"),
+                BorderBrush = BrushRes("StrokeBrush"),
+                BorderThickness = new Thickness(1),
+                CornerRadius = new CornerRadius(12)
+            };
+            var grid = new Grid { Padding = new Thickness(12), ColumnSpacing = 10 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            var stack = new StackPanel { Spacing = 2 };
+            stack.Children.Add(new TextBlock { Text = item.Title, Foreground = BrushRes("InkBrush"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            stack.Children.Add(new TextBlock { Text = item.Subtitle, Style = Res("Body"), FontSize = 12 });
+            grid.Children.Add(stack);
+            var status = new StackPanel { Spacing = 2, HorizontalAlignment = HorizontalAlignment.Right };
+            status.Children.Add(new TextBlock { Text = item.Status, Foreground = BrushRes("AccentBrush"), FontWeight = Microsoft.UI.Text.FontWeights.SemiBold, FontSize = 12, HorizontalAlignment = HorizontalAlignment.Right });
+            status.Children.Add(new TextBlock { Text = item.Priority, Style = Res("MetricLabel"), HorizontalAlignment = HorizontalAlignment.Right });
+            Grid.SetColumn(status, 1);
+            grid.Children.Add(status);
+            button.Content = grid;
+            button.Click += (_, _) => SelectWorkspaceItem(item);
+            WorkspaceItemsPanel.Children.Add(button);
+        }
+        SelectWorkspaceItem(config.Workspace.Items[0]);
+    }
+
+    private void SelectWorkspaceItem(WorkspaceItemConfig item)
+    {
+        foreach (var field in item.Context)
+            if (_contextBoxes.TryGetValue(field.Key, out var box))
+                box.Text = field.Value;
+        if (!string.IsNullOrWhiteSpace(item.Prompt))
+            PromptBox.Text = item.Prompt;
+        FocusPrompt();
     }
 
     private void ConfigurePrototypeMedia(AppConfig config)

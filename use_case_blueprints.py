@@ -46,6 +46,7 @@ class Blueprint:
     local_drivers: tuple[dict[str, str], ...]
     brand: dict[str, str]
     prototype: dict[str, str | bool] = field(default_factory=dict)
+    workspace: dict = field(default_factory=dict)
     required_hits: int = 3
     exclusions: tuple[str, ...] = field(default_factory=tuple)
 
@@ -152,6 +153,48 @@ BLUEPRINTS: tuple[Blueprint, ...] = (
             "demoImageLabel": "A17 upper mount bracket",
             "demoImagePrompt": "Component A17 photo: faint circular scoring and dull surface patch near the upper mounting point. Inspect it.",
             "uploadPromptTemplate": "Uploaded component image: {fileName}. Inspect the visible manufacturing defect and recommend next checks.",
+        },
+        workspace={
+            "title": "Inspection queue",
+            "subtitle": "Open quality holds from Line 2",
+            "items": [
+                {
+                    "title": "A17 surface anomaly",
+                    "subtitle": "Batch 24-10-07 · Tool Station 4",
+                    "status": "Hold",
+                    "priority": "High",
+                    "prompt": "Component A17 photo: faint circular scoring and dull surface patch near the upper mounting point. Inspect it.",
+                    "context": {
+                        "component": "A17 upper mount bracket, batch 24-10-07",
+                        "station": "Cell 2 / Tool Station 4",
+                        "telemetry": "QI-217, torque drift +8%, spindle vibration 4.8 mm/s, tool life 91%"
+                    }
+                },
+                {
+                    "title": "B04 bolt-hole burrs",
+                    "subtitle": "Batch 24-10-07 · Deburr Cell 1",
+                    "status": "Review",
+                    "priority": "Medium",
+                    "prompt": "Bracket B04 image shows burrs around two bolt holes and a bright scratch on the machined face. What is the likely defect?",
+                    "context": {
+                        "component": "B04 actuator bracket, batch 24-10-07",
+                        "station": "Deburr Cell 1",
+                        "telemetry": "QI-104, air blast pressure nominal, deburr wheel life 88%"
+                    }
+                },
+                {
+                    "title": "C22 coating variation",
+                    "subtitle": "Batch 24-10-08 · Coating Line 3",
+                    "status": "Triage",
+                    "priority": "Low",
+                    "prompt": "Housing C22 photo: coating looks uneven on the top edge, but dimensions are within tolerance. Is this a hold?",
+                    "context": {
+                        "component": "C22 control housing, batch 24-10-08",
+                        "station": "Coating Line 3",
+                        "telemetry": "No fault code, coating thickness 62-71 microns, dimensions in tolerance"
+                    }
+                }
+            ]
         },
     ),
     Blueprint(
