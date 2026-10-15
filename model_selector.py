@@ -427,15 +427,17 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
     from industry import (GENERAL, ModeSpec, TRANSLATE_CORE, detect_drivers, detect_industry,
                           is_staff_example, quoted_examples, theme_dict, wants_knowledge,
                           wants_staff_mode, wants_translation)
+    from use_case_blueprints import match_blueprint
 
     title = name or title_from_idea(idea)
     profile = detect_industry(idea)
+    blueprint = match_blueprint(idea, profile.id)
     if profile is GENERAL and analysis.primary in _SAMPLE_INPUTS:
         primary_samples = list(_SAMPLE_INPUTS[analysis.primary])
     else:
         primary_samples = list(profile.primary.samples)
-    org = ORG_BY_INDUSTRY.get(profile.id, "Zava")
-    knowledge = wants_knowledge(idea, profile)
+    org = blueprint.organisation if blueprint else ORG_BY_INDUSTRY.get(profile.id, "Zava")
+    knowledge = True if blueprint else wants_knowledge(idea, profile)
     staff = wants_staff_mode(idea, profile)
 
     # Examples written into the idea are the demo the presenter has in mind: use them first.
@@ -444,10 +446,21 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
     primary_quotes = [q for q in quotes if q not in staff_quotes]
     primary_samples = _merge_samples(primary_quotes, primary_samples)
 
-    modes = [_mode_dict(profile.primary, org, primary_samples, knowledge)]
-    if staff:
-        staff_samples = _merge_samples(staff_quotes, profile.staff.samples)
-        modes.append(_mode_dict(profile.staff, org, staff_samples, knowledge))
+    if blueprint:
+        modes = []
+        for bp_mode in blueprint.modes:
+            mode = ModeSpec(
+                bp_mode.id, bp_mode.name, bp_mode.input_label, bp_mode.action,
+                bp_mode.output_title, bp_mode.system_core, list(bp_mode.samples),
+                scopes=list(bp_mode.scopes), uses_context=True,
+                top_passages=bp_mode.top_passages, diversify=bp_mode.diversify,
+                min_relative_score=bp_mode.min_relative_score)
+            modes.append(_mode_dict(mode, org, list(bp_mode.samples), knowledge))
+    else:
+        modes = [_mode_dict(profile.primary, org, primary_samples, knowledge)]
+        if staff:
+            staff_samples = _merge_samples(staff_quotes, profile.staff.samples)
+            modes.append(_mode_dict(profile.staff, org, staff_samples, knowledge))
     if wants_translation(idea):
         translate = ModeSpec("translate", "Translate", "Text to translate, or a topic to explain", "Translate",
                              "Translation", TRANSLATE_CORE, [], scopes=["public"], uses_language=True,
@@ -469,8 +482,8 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
         modes[0]["systemPrompt"] = system
 
     return AppSpec(
-        title=title,
-        tagline=tagline_from_idea(idea),
+        title=name or (blueprint.title if blueprint else title),
+        tagline=blueprint.tagline if blueprint else tagline_from_idea(idea),
         system_prompt=system,
         input_label=modes[0]["inputLabel"],
         sample_prompts=modes[0]["samplePrompts"],
@@ -479,12 +492,14 @@ def default_app_spec(idea: str, analysis: IdeaAnalysis, name: str | None = None)
         organisation=org,
         theme=theme_dict(profile.theme),
         modes=modes,
-        context_title=profile.context_title,
-        context_fields=[{"key": f.key, "label": f.label, "placeholder": f.placeholder}
-                        for f in profile.context_fields],
-        local_drivers=[{"id": d.id, "title": d.title, "detail": d.detail}
-                       for d in detect_drivers(idea, profile)],
+        context_title=blueprint.context_title if blueprint else profile.context_title,
+        context_fields=list(blueprint.context_fields) if blueprint else [
+            {"key": f.key, "label": f.label, "placeholder": f.placeholder}
+            for f in profile.context_fields],
+        local_drivers=list(blueprint.local_drivers) if blueprint else [
+            {"id": d.id, "title": d.title, "detail": d.detail}
+            for d in detect_drivers(idea, profile)],
         knowledge=knowledge,
-        knowledge_pack=profile.knowledge_pack if knowledge else None,
+        knowledge_pack=(blueprint.knowledge_pack if blueprint else profile.knowledge_pack) if knowledge else None,
         languages=LANGUAGES if wants_translation(idea) else [],
     )

@@ -37,6 +37,22 @@ real inference locally, stored on this device. Everything the original `ai-facto
 6. **Stored on this device.** Apps are generated in `%USERPROFILE%\ZavaLiveBuilds`. Cloud-synced
    folders (OneDrive) are refused and redirected, because sync slows builds and can evict files.
 
+## Use-case blueprints
+
+The harness now has a use-case blueprint layer on top of the broad industry profiles. When an idea
+clearly describes a known scenario, the generated app becomes a purpose-built product with custom
+modes, context fields, sample prompts and local knowledge, rather than a generic assistant.
+
+Current blueprints:
+
+| Blueprint | Generated experience |
+|---|---|
+| Manufacturing quality inspection | **AI Quality Inspector** with Inspect, Diagnose and Assist modes, component references, fault codes, telemetry and calibration procedures |
+| Patient aftercare companion | **Patient Companion** with aftercare Q&A, visit prep and clinician-approved local guidance |
+| Contract risk review | **Contract Risk Reviewer** with clause review, negotiation prep and local legal playbooks |
+
+Blueprints live in `use_case_blueprints.py`; their offline RAG packs live under `templates/knowledge/`.
+
 ## Speed: a 25 minute budget
 
 Measured on a Surface with an Intel Core Ultra 7 268V, from the hotel concierge idea to GO FOR SHOW:

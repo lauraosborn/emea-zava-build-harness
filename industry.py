@@ -197,7 +197,8 @@ PROFILES: list[IndustryProfile] = [
     IndustryProfile(
         id="field", name="Field service and manufacturing",
         cues=("field", "engineer", "technician", "site", "maintenance", "repair", "equipment", "asset",
-              "factory", "manufactur", "plant", "work order", "inspection", "fault", "machine", "utility"),
+              "factory", "manufactur", "plant", "work order", "inspection", "quality", "defect",
+              "calibration", "fault", "machine", "operator", "workstation", "utility"),
         theme=_light("#C98A00", "#FFF3D6", canvas="#F4F5F3", surface2="#ECEEEA", stroke="#DADDD6",
                      ink="#16191C", ink2="#454B52", accent_ink="#16191C", font="Bahnschrift", corner=10),
         private_data="site, asset and customer records", audience="engineers",

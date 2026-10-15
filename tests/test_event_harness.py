@@ -236,6 +236,47 @@ class IndustryDesignTests(unittest.TestCase):
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
 
+    def test_manufacturing_quality_idea_gets_custom_inspection_app(self):
+        idea = ("AI Quality Inspector for a manufacturing factory. Operators inspect component photos, diagnose "
+                "surface defects, use Tool Station 4 telemetry and retrieve offline calibration procedures.")
+        spec = default_app_spec(idea, analyse_idea(idea))
+        self.assertEqual(spec.industry, "field")
+        self.assertEqual(spec.title, "AI Quality Inspector")
+        self.assertEqual(spec.organisation, "Zava Manufacturing")
+        self.assertEqual([m["name"] for m in spec.modes], ["Inspect", "Diagnose", "Assist"])
+        self.assertEqual(spec.context_title, "Production context")
+        self.assertTrue(spec.knowledge)
+        self.assertEqual(spec.knowledge_pack, "manufacturing-quality")
+        self.assertIn("Tool Station 4", spec.modes[2]["samplePrompts"][0])
+        self.assertEqual(spec.local_drivers[1]["id"], "privacy")
+
+    def test_blueprint_app_ships_use_case_knowledge_pack(self):
+        tmp = Path(tempfile.mkdtemp())
+        try:
+            cat = catalog(variant("phi-4-mini", size=2200, cached=True), variant("qwen2.5-0.5b", size=330, cached=True))
+            idea = ("Build an AI Quality Inspector for manufacturing quality inspection. Inspect component photos, "
+                    "diagnose defects, use fault telemetry and show tool calibration procedures.")
+            analysis = analyse_idea(idea)
+            spec = default_app_spec(idea, analysis)
+            root = create_event_app(spec, select_models(analysis, cat), "ai-quality-inspector", tmp)
+            kb = root / "src" / "AIQualityInspector" / "Assets" / "knowledge"
+            self.assertTrue((kb / "public" / "component-reference.md").exists())
+            self.assertTrue((kb / "staff" / "maintenance-manual.md").exists())
+            self.assertTrue((kb / "staff" / "fault-codes-and-telemetry.md").exists())
+            cfg = json.loads((root / "src/AIQualityInspector/Assets/app-config.json").read_text(encoding="utf-8"))
+            self.assertEqual([m["name"] for m in cfg["modes"]], ["Inspect", "Diagnose", "Assist"])
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def test_healthcare_patient_companion_gets_custom_aftercare_app(self):
+        idea = ("Patient Companion for a healthcare discharge journey. It answers patient aftercare questions "
+                "from clinician-approved care plan guidance while offline.")
+        spec = default_app_spec(idea, analyse_idea(idea))
+        self.assertEqual(spec.title, "Patient Companion")
+        self.assertEqual([m["name"] for m in spec.modes], ["Aftercare Q&A", "Visit prep"])
+        self.assertEqual(spec.knowledge_pack, "patient-companion")
+        self.assertEqual(spec.local_drivers[0]["id"], "privacy")
+
     def test_unknown_industry_falls_back_to_general(self):
         idea = "Help me rewrite messages to be friendlier"
         spec = default_app_spec(idea, analyse_idea(idea))
